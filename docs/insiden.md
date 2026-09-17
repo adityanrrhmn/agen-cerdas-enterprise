@@ -15,3 +15,4 @@
 - **Pemulihan manual:** di Task Manager → Details, akhiri `WINWORD.EXE` yang tidak punya jendela dan berbaris perintah
   `/Automation` (aktifkan kolom "Command line"). Jangan mengakhiri Word yang sedang dipakai.
 - **Tindak lanjut:** jika macet berulang, coba render saat Word pengguna tertutup, lalu catat hasilnya di sini.
+- **2026-09-17 22:34:** render `-Pdf` berhasil (11 halaman) saat laporan tidak sedang dibuka di Word. Dugaan konflik dengan instance Word pengguna makin kuat, tetapi belum terbukti.

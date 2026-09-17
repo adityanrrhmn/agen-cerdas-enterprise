@@ -5,8 +5,8 @@ Indeks isi laporan agar tidak perlu membaca ulang seluruh .docx.
 | Atribut | Nilai |
 |---|---|
 | File | `Laporan_Multi_Agent_Email_Writer_Enrichment_Kelompok_1.docx` |
-| SHA256 | `a159db82b42a5dc33355be4e3943d164c1cbf56f98a8d27380079de79f5f1052` |
-| Diubah (mtime) | 2026-09-17 15:39 |
+| SHA256 | `2ee3692e1f2c91fcbcbaf2f9d4ac7a996cd1ea7f722e0c3e79d9cbfeea29a11f` |
+| Diubah (mtime) | 2026-09-17 22:34 (peran §1 diganti; cadangan versi sebelumnya di `backup/`) |
 | Dipetakan | 2026-09-17, dari ekstraksi pandoc 3.10 dan render Word 2016 (x86) |
 | Ukuran | 11 halaman A4, 3.501 kata (hitungan Word), 20 tabel, 5 gambar PNG |
 | Struktur docx | 1 section, header/footer, tanpa tracked changes, komentar, field, atau footnote |
@@ -19,7 +19,7 @@ Jika SHA256 file sekarang berbeda, peta ini usang. Jalankan `tools/periksa-lapor
 | § | Judul | Hal. | Isi pokok |
 |---|---|---|---|
 | — | Sampul + "Ringkasan konsep" | 1 | Judul, subjudul, UGM 2026 |
-| 1 | Identitas Kelompok | 1 | 5 anggota dan peran: Leader & Presenter, Programmer, Designer, Researcher, Evaluator |
+| 1 | Identitas Kelompok | 1 | 5 anggota dan peran: Aditya (Leader & Evaluator), Amar (Presenter), Amelia (Designer), Jovi (Researcher), Syakirah (Programmer) |
 | 2 | Problem Statement | 1 | 4 pain point, dampak, dan respons; "Batas laporan" |
 | 3 | State of the Art | 2 | Clay, Apollo, HubSpot/Clearbit, ZoomInfo; penelitian AutoGen, ReAct, Ditto, Papaioannou & Edwards |
 | 4 | Tujuan Proyek | 2 | Sasaran: fungsi bisnis, integrasi AI, UI/UX, mobile agents |
@@ -74,6 +74,6 @@ Ubah satu lokasi, periksa lokasi lain di baris yang sama. Status: **T** = terver
 ## Hal terbuka (bukan kesalahan terverifikasi)
 
 - Rubrik penilaian dirujuk di §5.3 dan §6, tetapi tidak ada di workspace. Kesesuaian laporan terhadap rubrik **belum diperiksa**.
-- §12: repositori kode belum ada.
+- §12 masih menulis "Repositori kelompok: belum disertakan", padahal repo sudah ada (github.com/adityanrrhmn/agen-cerdas-enterprise, private). Perlu diperbarui bila laporan akan dikumpulkan.
 - Metadata docx: tanggal dibuat/diubah 2013-12-23, kemungkinan warisan templat. Tidak memengaruhi tampilan.
 - Tautan referensi belum diverifikasi ulang oleh agen; klaim "diperiksa 17 September 2026" berasal dari teks laporan.

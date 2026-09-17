@@ -29,13 +29,13 @@ tersebut; nomor bagian (§) di README merujuk ke laporan.
 
 ## Mulai dari mana (per peran)
 
-| Peran | Mulai dari | Untuk apa |
-|---|---|---|
-| Leader & Presenter | [Cara memakai dashboard](#cara-memakai-dashboard), mode **Satu orang** | Skenario demo yang aman |
-| Programmer | `backend/app/`, `backend/tests/`, [docs/runbook-aplikasi.md](docs/runbook-aplikasi.md) | Alur agen, API, tes |
-| Designer | `frontend/src/`, [PRODUCT.md](PRODUCT.md) | UI Setup → Preview & Approval → Monitor |
-| Researcher | [docs/peta-laporan.md](docs/peta-laporan.md), prompt di `backend/app/agents.py` | Kesesuaian dengan laporan dan SOTA |
-| Evaluator | [Pengujian](#pengujian), tab **Monitor** (biaya, token, p95, migrasi) | Bukti metrik untuk §9 Evaluasi |
+| Anggota | Peran | Mulai dari | Untuk apa |
+|---|---|---|---|
+| Aditya Nurrohman | Leader & Evaluator | [Status & keterbatasan](#status--keterbatasan), [Pengujian](#pengujian), tab **Monitor** (biaya, token, p95, migrasi) | Koordinasi prioritas; bukti metrik untuk §9 Evaluasi |
+| Amar Ma'ruf | Presenter | [Cara memakai dashboard](#cara-memakai-dashboard), mode **Satu orang** | Skenario demo yang aman |
+| St. Syakirah | Programmer | `backend/app/`, `backend/tests/`, [docs/runbook-aplikasi.md](docs/runbook-aplikasi.md) | Alur agen, API, tes |
+| Amelia Gizzela Sheehan Auni | Designer | `frontend/src/`, [PRODUCT.md](PRODUCT.md) | UI Setup → Preview & Approval → Monitor |
+| Gregorius Bugen Jovi Sitindaon | Researcher | [docs/peta-laporan.md](docs/peta-laporan.md), prompt di `backend/app/agents.py` | Kesesuaian dengan laporan dan SOTA |
 
 ---
 
