@@ -1,0 +1,355 @@
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Ban, Check, ExternalLink, Pause, Pencil, Play, Search, ShieldAlert, Undo2, X } from "lucide-react";
+import { api, type CampaignSummary, type Email, type Evidence, type LeadDetail, type LeadRow } from "../api";
+import { usePoll } from "../hooks";
+import { Button, Empty, Notice, STAGE_LABEL, StatusBadge, fmtDate, fmtNum, fmtTime, fmtUsd, useAction } from "../ui";
+
+type Filter = "all" | "ready" | "review" | "blocked" | "progress" | "sent";
+
+const FILTERS: { key: Filter; label: string; match: (l: LeadRow) => boolean }[] = [
+  { key: "all", label: "Semua", match: () => true },
+  { key: "ready", label: "Siap disetujui", match: (l) => l.email_status === "AWAITING_APPROVAL" },
+  { key: "review", label: "Perlu review", match: (l) => ["NEEDS_REVIEW", "NEEDS_IDENTITY", "NEEDS_REAPPROVAL", "SENT_UNKNOWN"].includes(l.email_status) },
+  { key: "blocked", label: "Diblokir", match: (l) => l.email_status === "BLOCKED" || l.decision === "BLOCK" },
+  { key: "progress", label: "Diproses", match: (l) => !l.email_status },
+  { key: "sent", label: "Disetujui & terkirim", match: (l) => ["APPROVED", "SENDING", "SENT", "FAILED", "NOT_SENT"].includes(l.email_status) },
+];
+
+interface Props {
+  summary: CampaignSummary;
+  onChanged: () => void;
+}
+
+export default function Review({ summary, onChanged }: Props) {
+  const id = summary.campaign.campaign_id;
+  const leads = usePoll(() => api.leads(id), 2500, [id]);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
+  const { busy, run } = useAction();
+
+  const rows = leads.data ?? [];
+  const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.key, rows.filter(f.match).length])), [rows]);
+  const visible = rows.filter(FILTERS.find((f) => f.key === filter)!.match)
+    .filter((l) => !query || `${l.name} ${l.company} ${l.email}`.toLowerCase().includes(query.toLowerCase()));
+
+  useEffect(() => {
+    if (!selected && visible.length) setSelected(visible[0].lead_id);
+  }, [visible, selected]);
+
+  const refreshAll = () => { leads.refresh(); onChanged(); };
+  const paused = summary.campaign.status === "PAUSED";
+
+  return (
+    <div className="review">
+      <div className="review-bar">
+        <div className="segments" role="tablist" aria-label="Saring lead">
+          {FILTERS.map((f) => (
+            <button key={f.key} role="tab" aria-selected={filter === f.key} className={`segment seg-${f.key}`} onClick={() => setFilter(f.key)}>
+              <span className="seg-count">{fmtNum(counts[f.key] ?? 0)}</span>
+              <span className="seg-label">{f.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="review-actions">
+          {summary.campaign.status !== "DRAFT" && summary.campaign.status !== "COMPLETED" && (
+            <Button icon={paused ? <Play size={16} /> : <Pause size={16} />} busy={busy === "pause"}
+              onClick={async () => { await run("pause", () => api.pause(id, !paused), paused ? "Campaign dilanjutkan." : "Campaign dijeda: agen berhenti di checkpoint berikutnya, tidak ada email terkirim."); onChanged(); }}>
+              {paused ? "Lanjutkan" : "Jeda"}
+            </Button>
+          )}
+          <Button variant="primary" icon={<Check size={16} />} disabled={!counts.ready} busy={busy === "bulk"}
+            onClick={async () => { await run("bulk", () => api.approvePass(id), (r) => `${r.approved} draft disetujui dan masuk antrean kirim.`); refreshAll(); }}>
+            Setujui semua yang lolos ({fmtNum(counts.ready ?? 0)})
+          </Button>
+        </div>
+      </div>
+      {paused && <Notice tone="warn" title="Campaign dijeda">Agen berhenti di checkpoint terdekat dan scheduler tidak mengirim email.</Notice>}
+
+      <div className="review-body">
+        <section className="panel lead-list" aria-label="Daftar lead">
+          <div className="list-search">
+            <Search size={15} aria-hidden />
+            <input placeholder="Cari nama, perusahaan, email" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Cari lead" />
+          </div>
+          {leads.error && <Notice tone="error">{leads.error}</Notice>}
+          {!leads.data && !leads.error && <div className="skeleton-list">{Array.from({ length: 8 }, (_, i) => <div key={i} className="skeleton-row" />)}</div>}
+          {leads.data && visible.length === 0 && (
+            <Empty title={rows.length ? "Tidak ada lead di filter ini" : "Belum ada lead"}>
+              {rows.length ? "Pilih filter lain." : "Muat lead dan jalankan agen dari langkah Setup."}
+            </Empty>
+          )}
+          <ul className="lead-rows">
+            {visible.map((l) => (
+              <li key={l.lead_id}>
+                <button className={`lead-row ${selected === l.lead_id ? "is-selected" : ""}`} onClick={() => setSelected(l.lead_id)}>
+                  <span className="lead-name">{l.name}</span>
+                  <span className="lead-company">{l.company || l.description}</span>
+                  <span className="lead-status">
+                    <StatusBadge status={l.email_status} fallback={STAGE_LABEL[l.stage] ?? l.stage} />
+                    {l.host && !l.email_status && <span className="host-chip">runtime {l.host}</span>}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+        {selected ? <LeadPanel key={selected} leadId={selected} onChanged={refreshAll} /> : (
+          <section className="panel detail"><Empty title="Pilih lead">Detail draft, bukti, dan alasan keputusan muncul di sini.</Empty></section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LeadPanel({ leadId, onChanged }: { leadId: string; onChanged: () => void }) {
+  const detail = usePoll(() => api.lead(leadId), 3000, [leadId]);
+  const d = detail.data;
+  if (detail.error) return <section className="panel detail"><Notice tone="error">{detail.error}</Notice></section>;
+  if (!d) return <section className="panel detail"><div className="skeleton-detail" /></section>;
+  const refresh = () => { detail.refresh(); onChanged(); };
+  const facts = d.evidence;
+  const known = new Set(facts.map((f) => f.fact_id));
+  const order = new Map((d.email?.used_fact_ids ?? []).filter((id) => known.has(id)).map((id, i) => [id, i + 1]));
+
+  return (
+    <section className="panel detail" aria-label={`Detail ${d.lead.name}`}>
+      <header className="detail-head">
+        <div>
+          <h2>{d.lead.name}</h2>
+          <p className="muted">{[d.lead.company || d.lead.hints?.organization, d.lead.email || "tanpa email"].filter(Boolean).join(" · ")}</p>
+          {d.lead.description && <p className="lead-desc">“{d.lead.description}”</p>}
+          {d.lead.hints && (d.lead.hints.organization || d.lead.hints.role) && (
+            <p className="hint-line">
+              Dibaca agen dari deskripsi: {[d.lead.hints.role, d.lead.hints.organization_aliases.join(" / ") || d.lead.hints.organization].filter(Boolean).join(" · ")}
+              <span className="muted"> (petunjuk pencarian, bukan fakta email)</span>
+            </p>
+          )}
+        </div>
+        <div className="detail-status">
+          <StatusBadge status={d.email?.status ?? ""} fallback={STAGE_LABEL[d.lead.stage] ?? d.lead.stage} />
+          {d.lead.match_score !== null && <span className="score" title="Skor entity linking S = 0,40d + 0,30n + 0,20c + 0,10r">S {fmtNum(d.lead.match_score, 3)}</span>}
+        </div>
+      </header>
+
+      <Reasons detail={d} />
+      {!d.lead.email && <EmailFill leadId={d.lead.lead_id} onChanged={refresh} />}
+      {d.email?.status === "NEEDS_IDENTITY" && <IdentityReview detail={d} onChanged={refresh} />}
+      {d.email && d.email.status !== "NEEDS_IDENTITY" && d.email.body && <Draft email={d.email} facts={facts} order={order} onChanged={refresh} />}
+      {!d.email && <Empty title="Agen masih bekerja">Tahap sekarang: {STAGE_LABEL[d.lead.stage] ?? d.lead.stage}{d.task?.host ? ` di runtime ${d.task.host}` : ""}.</Empty>}
+      {d.email?.status === "BLOCKED" && !d.email.body && <p className="muted small">Kontak diblokir sebelum draft ditulis; tidak ada biaya LLM.</p>}
+
+      <EvidenceList facts={facts} order={order} />
+      <Trail detail={d} />
+    </section>
+  );
+}
+
+function Reasons({ detail }: { detail: LeadDetail }) {
+  const reasons = detail.email?.security_reasons?.length ? detail.email.security_reasons : detail.lead.reasons;
+  if (!reasons?.length && !detail.email?.error) return null;
+  return (
+    <div className="reasons">
+      {reasons?.map((r, i) => (
+        <p key={i} className={`reason reason-${r.level}`}>
+          {r.level === "block" ? <Ban size={14} aria-hidden /> : r.level === "review" ? <ShieldAlert size={14} aria-hidden /> : <span className="info-dot" aria-hidden />}
+          <span className="reason-level">{{ block: "Blokir", review: "Review", info: "Info" }[r.level]}</span>
+          {r.message}
+        </p>
+      ))}
+      {detail.email?.error && <p className="reason reason-review"><ShieldAlert size={14} aria-hidden /><span className="reason-level">Kirim</span>{detail.email.error}</p>}
+    </div>
+  );
+}
+
+function EmailFill({ leadId, onChanged }: { leadId: string; onChanged: () => void }) {
+  const [value, setValue] = useState("");
+  const { busy, run } = useAction();
+  return (
+    <form className="email-fill" onSubmit={async (e) => {
+      e.preventDefault();
+      const ok = await run("email", () => api.setLeadEmail(leadId, value), "Email disimpan; draft diperiksa ulang.");
+      if (ok !== undefined) onChanged();
+    }}>
+      <label htmlFor={`email-${leadId}`}>Email penerima belum ada</label>
+      <input id={`email-${leadId}`} type="email" required value={value} onChange={(e) => setValue(e.target.value)} placeholder="nama@instansi.ac.id" />
+      <Button type="submit" size="sm" variant="primary" busy={busy === "email"}>Simpan email</Button>
+    </form>
+  );
+}
+
+function IdentityReview({ detail, onChanged }: { detail: LeadDetail; onChanged: () => void }) {
+  const { busy, run } = useAction();
+  const lead = detail.lead;
+  return (
+    <div className="identity">
+      <h3>Pilih identitas yang benar</h3>
+      <p className="muted small">
+        Agen tidak menebak. Kandidat diurutkan dengan S = 0,40·domain/URL + 0,30·nama + 0,20·perusahaan + 0,10·jabatan; diterima otomatis hanya bila S ≥ 0,85 dan unggul ≥ 0,10.
+        Data CRM: {lead.domain || "tanpa domain"}{lead.title_hint ? `, ${lead.title_hint}` : ""}.
+      </p>
+      <table className="table">
+        <thead><tr><th>Kandidat</th><th className="num">d</th><th className="num">n</th><th className="num">c</th><th className="num">r</th><th className="num">S</th><th /></tr></thead>
+        <tbody>
+          {lead.candidates.map((c, i) => (
+            <tr key={i}>
+              <td>
+                <strong>{c.name}</strong>
+                <span className="cell-sub">{[c.title, c.company, c.domain].filter(Boolean).join(" · ")}</span>
+                {c.profile_url && <a className="cell-link" href={c.profile_url} target="_blank" rel="noreferrer">Profil <ExternalLink size={12} aria-hidden /></a>}
+              </td>
+              <td className="num">{fmtNum(c.score.d, 0)}</td>
+              <td className="num">{fmtNum(c.score.n, 2)}</td>
+              <td className="num">{fmtNum(c.score.c, 2)}</td>
+              <td className="num">{fmtNum(c.score.r, 2)}</td>
+              <td className="num strong">{fmtNum(c.score.S, 3)}</td>
+              <td><Button size="sm" busy={busy === `c${i}`} onClick={async () => { await run(`c${i}`, () => api.resolve(lead.lead_id, i), "Identitas dipilih; agen melanjutkan dari checkpoint."); onChanged(); }}>Pilih</Button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Button variant="ghost" busy={busy === "none"} onClick={async () => { await run("none", () => api.resolve(lead.lead_id, null), "Dilanjutkan tanpa data enrichment."); onChanged(); }}>
+        Bukan salah satunya, lanjut tanpa enrichment
+      </Button>
+    </div>
+  );
+}
+
+function highlight(body: string, facts: Evidence[], order: Map<string, number>) {
+  const used = facts.filter((f) => order.has(f.fact_id) && f.value.length >= 4);
+  if (!used.length) return body;
+  const pattern = new RegExp(`(${used.map((f) => f.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
+  return body.split(pattern).map((part, i) => {
+    const fact = used.find((f) => f.value.toLowerCase() === part.toLowerCase());
+    return fact ? (
+      <mark key={i} className="fact-mark" title={`${fact.field} · ${fact.source_type}`}>{part}<sup>{order.get(fact.fact_id)}</sup></mark>
+    ) : <Fragment key={i}>{part}</Fragment>;
+  });
+}
+
+function Draft({ email, facts, order, onChanged }: { email: Email; facts: Evidence[]; order: Map<string, number>; onChanged: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [subject, setSubject] = useState(email.subject);
+  const [body, setBody] = useState(email.body);
+  const [ack, setAck] = useState(false);
+  const { busy, run } = useAction();
+
+  useEffect(() => { if (!editing) { setSubject(email.subject); setBody(email.body); } }, [email.subject, email.body, editing]);
+
+  const canApprove = email.status === "AWAITING_APPROVAL" || (email.status === "NEEDS_REVIEW" && ack);
+  const editable = ["AWAITING_APPROVAL", "NEEDS_REVIEW", "APPROVED", "NEEDS_REAPPROVAL"].includes(email.status);
+  const suppressible = !["SENT", "SENDING", "BLOCKED"].includes(email.status);
+
+  return (
+    <article className="draft">
+      <header className="draft-head">
+        <span className="draft-version">Draft v{email.draft_version}</span>
+        {email.llm_model && <span className="muted small">{email.llm_model === "simulasi" ? "SIMULASI (bukan LLM)" : email.llm_model} · {fmtNum(email.tokens_in + email.tokens_out)} token · {fmtUsd(email.cost_usd)}</span>}
+        <div className="draft-tools">
+          {editable && !editing && <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEditing(true)}>Edit</Button>}
+        </div>
+      </header>
+      <dl className="mail-meta">
+        <div><dt>Kepada</dt><dd>{email.to_email || <span className="warn-text">belum diisi</span>}</dd></div>
+        <div><dt>Subjek</dt><dd>{editing ? <input value={subject} onChange={(e) => setSubject(e.target.value)} aria-label="Subjek" /> : email.subject}</dd></div>
+        <div><dt>Jadwal</dt><dd>{fmtDate(email.schedule)}</dd></div>
+      </dl>
+      {editing ? (
+        <>
+          <textarea className="mail-edit" rows={12} value={body} onChange={(e) => setBody(e.target.value)} aria-label="Isi email" />
+          <div className="draft-actions">
+            <Button variant="primary" busy={busy === "save"} onClick={async () => {
+              const r = await run("save", () => api.editEmail(email.send_key, subject, body), (x) => `Tersimpan sebagai v${x.draft_version}; pemeriksaan ulang: ${x.security_decision}. Approval lama batal.`);
+              if (r) { setEditing(false); onChanged(); }
+            }}>Simpan &amp; periksa ulang</Button>
+            <Button variant="ghost" icon={<Undo2 size={14} />} onClick={() => setEditing(false)}>Batal</Button>
+          </div>
+        </>
+      ) : (
+        <div className="mail-body">{highlight(email.body, facts, order)}</div>
+      )}
+      {!editing && ["AWAITING_APPROVAL", "NEEDS_REVIEW"].includes(email.status) && (
+        <footer className="approve-bar">
+          {email.status === "NEEDS_REVIEW" && (
+            <label className="ack">
+              <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+              Saya sudah memeriksa alasan review dan bukti di atas
+            </label>
+          )}
+          <div className="draft-actions">
+            <Button variant="primary" icon={<Check size={16} />} disabled={!canApprove} busy={busy === "approve"}
+              onClick={async () => { await run("approve", () => api.approve(email.send_key, email.draft_version, ack), `Draft v${email.draft_version} disetujui.`); onChanged(); }}>
+              Setujui v{email.draft_version}
+            </Button>
+            <Button variant="ghost" icon={<X size={16} />} busy={busy === "reject"}
+              onClick={async () => { await run("reject", () => api.reject(email.send_key), "Draft ditolak; tidak akan dikirim."); onChanged(); }}>Tolak</Button>
+          </div>
+        </footer>
+      )}
+      {email.status === "SENT_UNKNOWN" && (
+        <footer className="approve-bar">
+          <p className="small">Gmail tidak memberi hasil pasti. Periksa folder Terkirim di akun pengirim, lalu catat hasilnya. Sistem tidak mengirim ulang otomatis.</p>
+          <div className="draft-actions">
+            <Button busy={busy === "rs"} onClick={async () => { await run("rs", () => api.reconcile(email.send_key, "sent"), "Dicatat terkirim."); onChanged(); }}>Ada di Terkirim</Button>
+            <Button busy={busy === "rn"} onClick={async () => { await run("rn", () => api.reconcile(email.send_key, "not_sent"), "Dicatat tidak terkirim."); onChanged(); }}>Tidak ada</Button>
+          </div>
+        </footer>
+      )}
+      {email.status === "SENT" && <p className="small muted sent-note">Diterima Gmail API (ID {email.gmail_id}). Ini bukan bukti email sampai atau dibaca.</p>}
+      {suppressible && (
+        <button className="link-danger" disabled={busy === "sup"} onClick={async () => {
+          await run("sup", () => api.suppress(email.to_email, "diminta dari dashboard"), "Kontak masuk suppression dan diblokir.");
+          onChanged();
+        }}>
+          Jangan hubungi kontak ini lagi
+        </button>
+      )}
+    </article>
+  );
+}
+
+function EvidenceList({ facts, order }: { facts: Evidence[]; order: Map<string, number> }) {
+  if (!facts.length) return null;
+  const label = { crm: "CRM", apify: "Apify", firecrawl: "Web" } as const;
+  return (
+    <section className="evidence">
+      <h3>Jejak bukti</h3>
+      <ol className="facts">
+        {facts.map((f) => (
+          <li key={f.fact_id} className={`fact ${f.selected ? "is-selected" : ""}`}>
+            <span className={`fact-no ${order.has(f.fact_id) ? "is-used" : ""}`} aria-label={order.has(f.fact_id) ? `Dipakai di email, penanda ${order.get(f.fact_id)}` : "Tidak dipakai"}>
+              {order.get(f.fact_id) ?? "·"}
+            </span>
+            <div className="fact-main">
+              <p className="fact-value"><span className="fact-field">{f.field}</span>{f.value}</p>
+              {f.quote && <blockquote>“{f.quote}”</blockquote>}
+              <p className="fact-meta">
+                <span className={`src src-${f.source_type}`}>{label[f.source_type]}</span>
+                {f.source_url.startsWith("http") ? <a href={f.source_url} target="_blank" rel="noreferrer">{new URL(f.source_url).hostname} <ExternalLink size={11} aria-hidden /></a> : <span className="mono">{f.source_url}</span>}
+                <span>diambil {fmtTime(f.retrieved_at)}</span>
+                {f.match_score !== null && <span>S {fmtNum(f.match_score, 3)}</span>}
+                {f.selected && !order.has(f.fact_id) && <span>dipilih, tidak dipakai</span>}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function Trail({ detail }: { detail: LeadDetail }) {
+  const t = detail.task;
+  if (!t) return null;
+  return (
+    <details className="trail">
+      <summary>Task {t.task_id} · generation {t.generation} · {t.host || "–"}</summary>
+      <p className="small">Checkpoint: {(t.checkpoint.done ?? []).map((s) => STAGE_LABEL[s] ?? s).join(" → ") || "belum ada"}{t.retry ? ` · retry ${t.retry}` : ""}{t.error ? ` · galat: ${t.error}` : ""}</p>
+      {detail.audit.length > 0 && (
+        <ul className="audit">
+          {detail.audit.map((a) => <li key={a.event_id}><span className="mono">{fmtTime(a.timestamp)}</span> <strong>{a.actor}</strong> {a.change_summary}</li>)}
+        </ul>
+      )}
+    </details>
+  );
+}

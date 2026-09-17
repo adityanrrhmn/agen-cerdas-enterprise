@@ -1,0 +1,101 @@
+crm_id,name,email,company,domain,title_hint,linkedin_url,permission_status,permission_ref
+CRM-1000,Sinta Pramesti,sinta.pramesti@kuliner-nusantara.example,PT Kuliner Nusantara,kuliner-nusantara.example,,,granted,form-webinar-2026-000
+CRM-1001,Galih Kusuma,galih.kusuma@properti-jaya.example,PT Properti Jaya,properti-jaya.example,Supervisor Cabang,,granted,form-webinar-2026-001
+CRM-1002,Rizky Pramesti,rizky.pramesti@logistik-harmoni.example,PT Logistik Harmoni,logistik-harmoni.example,General Manager,,granted,form-webinar-2026-002
+CRM-1003,Bayu Setiawan,bayu.setiawan@kuliner-cemerlang.example,PT Kuliner Cemerlang,kuliner-cemerlang.example,,,granted,form-webinar-2026-003
+CRM-1004,Ayu Halim,ayu.halim@klinik-bahari.example,PT Klinik Bahari,klinik-bahari.example,Business Development Manager,,granted,form-webinar-2026-004
+CRM-1005,Sinta Rahayu,sinta.rahayu@properti-prima.example,PT Properti Prima,properti-prima.example,Kepala Administrasi,,granted,form-webinar-2026-005
+CRM-1006,Sari Wibowo,sari.wibowo@ritel-cemerlang.example,PT Ritel Cemerlang,ritel-cemerlang.example,,,granted,form-webinar-2026-006
+CRM-1007,Arif Gunawan,arif.gunawan@logistik-gemilang.example,PT Logistik Gemilang,logistik-gemilang.example,Supervisor Cabang,,denied,
+CRM-1008,Rizky Lestari,rizky.lestari@ritel-nusantara.example,PT Ritel Nusantara,ritel-nusantara.example,Business Development Manager,,granted,form-webinar-2026-008
+CRM-1009,Agus Harahap,agus.harahap@edukasi-bahari.example,PT Edukasi Bahari,edukasi-bahari.example,,,granted,form-webinar-2026-009
+CRM-1010,Agus Utami,agus.utami@klinik-nusantara.example,PT Klinik Nusantara,klinik-nusantara.example,Head of Operations,,granted,form-webinar-2026-010
+CRM-1011,Laras Permata,laras.permata@kuliner-sejahtera.example,PT Kuliner Sejahtera,kuliner-sejahtera.example,Operations Manager,,granted,form-webinar-2026-011
+CRM-1012,Rina Nugroho,rina.nugroho@ritel-cahaya.example,PT Ritel Cahaya,ritel-cahaya.example,,,,
+CRM-1013,Laras Wijaya,laras.wijaya@logistik-mitra.example,PT Logistik Mitra,logistik-mitra.example,Kepala Administrasi,,granted,form-webinar-2026-013
+CRM-1014,Agus Harahap,agus.harahap@ritel-abadi.example,PT Ritel Abadi,,Kepala Administrasi,,granted,form-webinar-2026-014
+CRM-1015,Ayu Santoso,ayu.santoso@properti-sejahtera.example,PT Properti Sejahtera,properti-sejahtera.example,,,granted,form-webinar-2026-015
+CRM-1016,Putri Permata,putri.permata@logistik-makmur.example,PT Logistik Makmur,logistik-makmur.example,Head of Operations,,granted,form-webinar-2026-016
+CRM-1017,Citra Setiawan,citra.setiawan@ritel-sejahtera.example,PT Ritel Sejahtera,ritel-sejahtera.example,General Manager,,granted,form-webinar-2026-017
+CRM-1018,Lestari Pramesti,lestari.pramesti@kuliner-harmoni.example,PT Kuliner Harmoni,kuliner-harmoni.example,,,granted,form-webinar-2026-018
+CRM-1019,Citra Permata,citra.permata#klinik-cahaya.example,PT Klinik Cahaya,klinik-cahaya.example,Operations Manager,,granted,form-webinar-2026-019
+CRM-1020,Ayu Maharani,ayu.maharani@kuliner-mitra.example,PT Kuliner Mitra,kuliner-mitra.example,Supervisor Cabang,,granted,form-webinar-2026-020
+CRM-1021,Teguh Wibowo,teguh.wibowo@klinik-mandiri.example,PT Klinik Mandiri,klinik-mandiri.example,,,granted,form-webinar-2026-021
+CRM-1022,Citra Anggraini,citra.anggraini@pabrik-nusantara.example,PT Manufaktur Nusantara,pabrik-nusantara.example,Head of Operations,,granted,form-webinar-2026-022
+CRM-1023,Putri Rahayu,putri.rahayu@pabrik-sentosa.example,PT Manufaktur Sentosa,pabrik-sentosa.example,Supervisor Cabang,,denied,
+CRM-1024,Eko Wijaya,eko.wijaya@kuliner-abadi.example,PT Kuliner Abadi,kuliner-abadi.example,,,granted,form-webinar-2026-024
+CRM-1025,Rizky Wijaya,rizky.wijaya@logistik-cahaya.example,PT Logistik Cahaya,logistik-cahaya.example,Head of Operations,,granted,form-webinar-2026-025
+CRM-1026,Agus Gunawan,agus.gunawan@pabrik-prima.example,PT Manufaktur Prima,pabrik-prima.example,Supervisor Cabang,,granted,form-webinar-2026-026
+CRM-1027,Arif Permata,arif.permata@logistik-abadi.example,PT Logistik Abadi,logistik-abadi.example,,,granted,form-webinar-2026-027
+CRM-1028,Agus Maharani,agus.maharani@pabrik-jaya.example,PT Manufaktur Jaya,,Head of Operations,,granted,form-webinar-2026-028
+CRM-1029,Dimas Pramesti,dimas.pramesti@logistik-cemerlang.example,PT Logistik Cemerlang,logistik-cemerlang.example,Kepala Administrasi,,granted,form-webinar-2026-029
+CRM-DUP-1,Agus Utami,agus.utami@klinik-nusantara.example,PT Klinik Nusantara,klinik-nusantara.example,Head of Operations,,granted,form-webinar-2026-010
+CRM-1030,Eko Santoso,eko.santoso@ritel-mitra.example,PT Ritel Mitra,ritel-mitra.example,,,granted,form-webinar-2026-030
+CRM-1031,Bayu Halim,bayu.halim@properti-sentosa.example,PT Properti Sentosa,properti-sentosa.example,Head of Operations,,granted,form-webinar-2026-031
+CRM-1032,Yoga Harahap,yoga.harahap@pabrik-makmur.example,PT Manufaktur Makmur,pabrik-makmur.example,Business Development Manager,,granted,form-webinar-2026-032
+CRM-1033,Laras Gunawan,laras.gunawan@kuliner-cahaya.example,PT Kuliner Cahaya,,,,granted,form-webinar-2026-033
+CRM-1034,Dimas Harahap,dimas.harahap@properti-abadi.example,PT Properti Abadi,properti-abadi.example,Kepala Administrasi,,granted,form-webinar-2026-034
+CRM-1035,Yoga Pramesti,yoga.pramesti@klinik-abadi.example,PT Klinik Abadi,klinik-abadi.example,Supervisor Cabang,,granted,form-webinar-2026-035
+CRM-1036,Teguh Saputra,teguh.saputra@klinik-prima.example,PT Klinik Prima,klinik-prima.example,,,granted,form-webinar-2026-036
+CRM-1037,Laras Saputra,laras.saputra@logistik-sentosa.example,PT Logistik Sentosa,logistik-sentosa.example,General Manager,,granted,form-webinar-2026-037
+CRM-1038,Arif Wijaya,arif.wijaya@ritel-sentosa.example,PT Ritel Sentosa,ritel-sentosa.example,General Manager,,granted,form-webinar-2026-038
+CRM-1039,Sari Rahayu,sari.rahayu@properti-lestari.example,PT Properti Lestari,properti-lestari.example,,,granted,form-webinar-2026-039
+CRM-1040,Dimas Lestari,dimas.lestari@properti-cahaya.example,PT Properti Cahaya,properti-cahaya.example,Direktur Operasional,,granted,form-webinar-2026-040
+CRM-1041,Galih Rahayu,galih.rahayu@edukasi-abadi.example,PT Edukasi Abadi,edukasi-abadi.example,Operations Manager,,denied,
+CRM-1042,Arif Pratama,arif.pratama@klinik-makmur.example,PT Klinik Makmur,klinik-makmur.example,,,granted,form-webinar-2026-042
+CRM-1043,Nadia Anggraini,nadia.anggraini@ritel-mandiri.example,PT Ritel Mandiri,ritel-mandiri.example,Business Development Manager,,granted,form-webinar-2026-043
+CRM-1044,Maya Pratama,maya.pratama@logistik-prima.example,PT Logistik Prima,logistik-prima.example,Business Development Manager,,granted,form-webinar-2026-044
+CRM-1045,Eko Wibowo,eko.wibowo@pabrik-cahaya.example,PT Manufaktur Cahaya,pabrik-cahaya.example,,,granted,form-webinar-2026-045
+CRM-1046,Sari Kusuma,sari.kusuma@pabrik-bahari.example,PT Manufaktur Bahari,pabrik-bahari.example,Operations Manager,,granted,form-webinar-2026-046
+CRM-1047,Sinta Lestari,sinta.lestari@logistik-mandiri.example,PT Logistik Mandiri,logistik-mandiri.example,Supervisor Cabang,,granted,form-webinar-2026-047
+CRM-1048,Rina Wijaya,rina.wijaya@kuliner-jaya.example,PT Kuliner Jaya,kuliner-jaya.example,,,granted,form-webinar-2026-048
+CRM-1049,Wulan Maharani,wulan.maharani@edukasi-sentosa.example,PT Edukasi Sentosa,,General Manager,,granted,form-webinar-2026-049
+CRM-1050,Agus Gunawan,agus.gunawan@ritel-makmur.example,PT Ritel Makmur,ritel-makmur.example,Kepala Administrasi,,granted,form-webinar-2026-050
+CRM-1051,Maya Wibowo,maya.wibowo@edukasi-prima.example,PT Edukasi Prima,edukasi-prima.example,,,granted,form-webinar-2026-051
+CRM-1052,Budi Siregar,budi.siregar@klinik-lestari.example,PT Klinik Lestari,klinik-lestari.example,Direktur Operasional,,granted,form-webinar-2026-052
+CRM-1053,Ayu Maharani,ayu.maharani@klinik-gemilang.example,PT Klinik Gemilang,klinik-gemilang.example,Head of Operations,,granted,form-webinar-2026-053
+CRM-1054,Ayu Nugroho,ayu.nugroho@pabrik-gemilang.example,PT Manufaktur Gemilang,pabrik-gemilang.example,,,granted,form-webinar-2026-054
+CRM-1055,Teguh Harahap,teguh.harahap@edukasi-mitra.example,PT Edukasi Mitra,edukasi-mitra.example,General Manager,,granted,form-webinar-2026-055
+CRM-1056,Indah Rahayu,indah.rahayu@properti-bahari.example,PT Properti Bahari,properti-bahari.example,Operations Manager,,granted,form-webinar-2026-056
+CRM-1057,Teguh Saputra,teguh.saputra@kuliner-prima.example,PT Kuliner Prima,kuliner-prima.example,,,,
+CRM-1058,Sinta Halim,sinta.halim@edukasi-nusantara.example,PT Edukasi Nusantara,edukasi-nusantara.example,Business Development Manager,,granted,form-webinar-2026-058
+CRM-1059,Dewi Setiawan,dewi.setiawan@ritel-lestari.example,PT Ritel Lestari,ritel-lestari.example,General Manager,,granted,form-webinar-2026-059
+CRM-1060,Putri Siregar,putri.siregar@logistik-nusantara.example,PT Logistik Nusantara,logistik-nusantara.example,,,granted,form-webinar-2026-060
+CRM-1061,Agus Pramesti,agus.pramesti@pabrik-mandiri.example,PT Manufaktur Mandiri,pabrik-mandiri.example,Direktur Operasional,,granted,form-webinar-2026-061
+CRM-1062,Agus Utami,agus.utami@klinik-sentosa.example,PT Klinik Sentosa,,Supervisor Cabang,,granted,form-webinar-2026-062
+CRM-1063,Putri Wibowo,putri.wibowo@ritel-jaya.example,PT Ritel Jaya,ritel-jaya.example,,,granted,form-webinar-2026-063
+CRM-1064,Ayu Setiawan,ayu.setiawan@kuliner-gemilang.example,PT Kuliner Gemilang,kuliner-gemilang.example,Kepala Administrasi,,granted,form-webinar-2026-064
+CRM-1065,Citra Pratama,citra.pratama@pabrik-abadi.example,PT Manufaktur Abadi,pabrik-abadi.example,Business Development Manager,,granted,form-webinar-2026-065
+CRM-1066,Eko Halim,eko.halim@properti-cemerlang.example,PT Properti Cemerlang,properti-cemerlang.example,,,denied,
+CRM-1067,Lestari Kusuma,lestari.kusuma@properti-nusantara.example,PT Properti Nusantara,properti-nusantara.example,Business Development Manager,,granted,form-webinar-2026-067
+CRM-1068,Indah Wibowo,indah.wibowo@klinik-jaya.example,PT Klinik Jaya,klinik-jaya.example,Kepala Administrasi,,granted,form-webinar-2026-068
+CRM-1069,Eko Harahap,eko.harahap@kuliner-sentosa.example,PT Kuliner Sentosa,kuliner-sentosa.example,,,granted,form-webinar-2026-069
+CRM-1070,Putri Harahap,putri.harahap@klinik-mitra.example,PT Klinik Mitra,klinik-mitra.example,Business Development Manager,,granted,form-webinar-2026-070
+CRM-1071,Agus Rahayu,agus.rahayu#properti-harmoni.example,PT Properti Harmoni,properti-harmoni.example,Head of Operations,,granted,form-webinar-2026-071
+CRM-1072,Wulan Rahayu,wulan.rahayu@kuliner-mandiri.example,PT Kuliner Mandiri,kuliner-mandiri.example,,,granted,form-webinar-2026-072
+CRM-1073,Teguh Permata,teguh.permata@logistik-bahari.example,PT Logistik Bahari,logistik-bahari.example,Operations Manager,,granted,form-webinar-2026-073
+CRM-1074,Nadia Rahayu,nadia.rahayu@pabrik-cemerlang.example,PT Manufaktur Cemerlang,pabrik-cemerlang.example,Supervisor Cabang,,granted,form-webinar-2026-074
+CRM-1075,Eko Siregar,eko.siregar@properti-gemilang.example,PT Properti Gemilang,properti-gemilang.example,,,granted,form-webinar-2026-075
+CRM-1076,Sari Wibowo,sari.wibowo@kuliner-bahari.example,PT Kuliner Bahari,kuliner-bahari.example,Direktur Operasional,,granted,form-webinar-2026-076
+CRM-1077,Fajar Santoso,fajar.santoso@kuliner-makmur.example,PT Kuliner Makmur,,General Manager,,granted,form-webinar-2026-077
+CRM-1078,Sinta Lestari,sinta.lestari@pabrik-lestari.example,PT Manufaktur Lestari,pabrik-lestari.example,,,granted,form-webinar-2026-078
+CRM-1079,Dewi Siregar,dewi.siregar@edukasi-harmoni.example,PT Edukasi Harmoni,edukasi-harmoni.example,Operations Manager,,granted,form-webinar-2026-079
+CRM-1080,Dimas Hidayat,dimas.hidayat@logistik-sejahtera.example,PT Logistik Sejahtera,logistik-sejahtera.example,Direktur Operasional,,granted,form-webinar-2026-080
+CRM-1081,Dimas Halim,dimas.halim@edukasi-mandiri.example,PT Edukasi Mandiri,edukasi-mandiri.example,,,granted,form-webinar-2026-081
+CRM-1082,Maya Kusuma,maya.kusuma@properti-mitra.example,PT Properti Mitra,properti-mitra.example,Business Development Manager,,granted,form-webinar-2026-082
+CRM-1083,Rina Anggraini,rina.anggraini@ritel-bahari.example,PT Ritel Bahari,ritel-bahari.example,Direktur Operasional,,granted,form-webinar-2026-083
+CRM-1084,Eko Santoso,eko.santoso@edukasi-jaya.example,PT Edukasi Jaya,,,,granted,form-webinar-2026-084
+CRM-1085,Dimas Pratama,dimas.pratama@ritel-prima.example,PT Ritel Prima,ritel-prima.example,Direktur Operasional,,granted,form-webinar-2026-085
+CRM-1086,Agus Nugroho,agus.nugroho@properti-mandiri.example,PT Properti Mandiri,properti-mandiri.example,Kepala Administrasi,,granted,form-webinar-2026-086
+CRM-1087,Agus Anggraini,agus.anggraini@edukasi-cemerlang.example,PT Edukasi Cemerlang,edukasi-cemerlang.example,,,granted,form-webinar-2026-087
+CRM-1088,Yoga Wijaya,yoga.wijaya@pabrik-mitra.example,PT Manufaktur Mitra,pabrik-mitra.example,Supervisor Cabang,,denied,
+CRM-1089,Hendra Wibowo,hendra.wibowo@klinik-cemerlang.example,PT Klinik Cemerlang,klinik-cemerlang.example,Supervisor Cabang,,granted,form-webinar-2026-089
+CRM-1090,Sari Anggraini,sari.anggraini@ritel-gemilang.example,PT Ritel Gemilang,ritel-gemilang.example,,,granted,form-webinar-2026-090
+CRM-1091,Lestari Maharani,lestari.maharani@edukasi-sejahtera.example,PT Edukasi Sejahtera,,Business Development Manager,,granted,form-webinar-2026-091
+CRM-1092,Budi Pratama,budi.pratama@pabrik-sejahtera.example,PT Manufaktur Sejahtera,pabrik-sejahtera.example,Business Development Manager,,granted,form-webinar-2026-092
+CRM-1093,Citra Saputra,citra.saputra@ritel-harmoni.example,PT Ritel Harmoni,ritel-harmoni.example,,,granted,form-webinar-2026-093
+CRM-1094,Hendra Wibowo,hendra.wibowo@edukasi-gemilang.example,PT Edukasi Gemilang,edukasi-gemilang.example,Kepala Administrasi,,granted,form-webinar-2026-094
+CRM-1095,Rizky Saputra,rizky.saputra@logistik-lestari.example,PT Logistik Lestari,,Head of Operations,,granted,form-webinar-2026-095
+CRM-1096,Sari Santoso,sari.santoso@edukasi-cahaya.example,PT Edukasi Cahaya,edukasi-cahaya.example,,,granted,form-webinar-2026-096
+CRM-1097,Nadia Pramesti,nadia.pramesti@kuliner-lestari.example,PT Kuliner Lestari,,Operations Manager,,granted,form-webinar-2026-097
+CRM-1098,Nadia Utami,nadia.utami@edukasi-lestari.example,PT Edukasi Lestari,edukasi-lestari.example,Direktur Operasional,,granted,form-webinar-2026-098
