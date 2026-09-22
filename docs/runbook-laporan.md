@@ -35,6 +35,14 @@ melihat tata letak, buka halaman tertentu dari PDF (misalnya Read dengan `pages`
 6. Perbarui `tools/cek_angka.py` bila asumsi berubah, jalankan pemeriksaan dengan `-Pdf`, lalu periksa halaman terdampak.
 7. Perbarui hash dan bagian terkait di `docs/peta-laporan.md`.
 
+## Revisi besar dengan skrip (dipakai 2026-09-22)
+
+Untuk menambah bagian, tabel, gambar, dan referensi tanpa merusak gaya, `tools/revisi_laporan_20260922.py` mengkloning
+templat XML laporan (paragraf, Heading1/2, tabel berheader `17656B`, callout `EAF3F3`, gambar + Caption, referensi
+berhyperlink), menulis ke berkas keluaran, dan tidak menyentuh berkas sumber. Skrip itu spesifik untuk versi
+`2ee3692e…` (lihat `backup/`) dan tidak idempoten; untuk revisi berikutnya salin polanya. Selalu render dengan `-Pdf`,
+periksa semua halaman, lalu perbarui hash dan matriks di `docs/peta-laporan.md`.
+
 ## Pemulihan
 
 - Salin cadangan terakhir dari `backup\` ke nama file asli, lalu cocokkan hash dengan catatan baseline.

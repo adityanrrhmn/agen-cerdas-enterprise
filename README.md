@@ -72,7 +72,8 @@ Struktur folder:
 ```
 backend/        FastAPI, agen, tes (pytest), data fiktif
 frontend/       React + TypeScript + Vite
-docs/           Runbook aplikasi, peta laporan, catatan insiden
+docs/           Runbook aplikasi, peta laporan, catatan insiden, gambar/ (tangkapan layar)
+presentasi/     Deck PowerPoint + generator (npm run build)
 tools/          Pemeriksa angka laporan, skrip screenshot
 .env.example    Templat konfigurasi (salin ke .env)
 run-dev.ps1     Menjalankan backend + dashboard sekaligus (Windows)
@@ -241,6 +242,15 @@ Keterbatasan yang disadari:
 - Angka kinerja di laporan §9.2 adalah ilustrasi analitis, bukan hasil pengukuran prototipe ini.
 
 ---
+
+## Laporan dan presentasi
+
+- **Laporan:** `Laporan_Multi_Agent_Email_Writer_Enrichment_Kelompok_1.docx` (17 halaman), sudah memuat realisasi prototipe
+  (§5.4), tangkapan layar (§8.4, Gambar 5–8), dan hasil pengujian (§9.3). Cara memeriksa: `tools/periksa-laporan.ps1`.
+- **Presentasi:** `presentasi/Presentasi_Outreach_Control_Kelompok_1.pptx` (17 slide, 16:9, catatan pembicara di tiap slide).
+  Untuk mengubah teks: sunting `presentasi/build-deck.js`, lalu `cd presentasi && npm install && npm run build`.
+- **Tangkapan layar:** `docs/gambar/`, diambil dari mode simulasi dengan data fiktif. Cara mengambil ulang ada di
+  [docs/runbook-aplikasi.md](docs/runbook-aplikasi.md#verifikasi-tampilan-tanpa-biaya).
 
 ## Aturan kerja tim
 

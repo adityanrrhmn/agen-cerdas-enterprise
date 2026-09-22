@@ -76,6 +76,11 @@ class LinkResult:
     reason: str
 
 
+def _id(x: float, digits: int = 3) -> str:
+    """Angka desimal gaya Indonesia (koma), konsisten dengan UI dan laporan."""
+    return f"{x:.{digits}f}".replace(".", ",")
+
+
 def link_entity(lead: dict[str, Any], candidates: list[dict[str, str]], threshold: float, min_gap: float) -> LinkResult:
     ranked = sorted(({**c, "score": score_candidate(lead, c)} for c in candidates),
                     key=lambda x: x["score"]["S"], reverse=True)
@@ -84,9 +89,9 @@ def link_entity(lead: dict[str, Any], candidates: list[dict[str, str]], threshol
     best = ranked[0]
     gap = best["score"]["S"] - (ranked[1]["score"]["S"] if len(ranked) > 1 else 0.0)
     if best["score"]["S"] >= threshold and gap >= min_gap:
-        return LinkResult("matched", best, ranked, f"S={best['score']['S']:.3f}, selisih={gap:.3f}")
-    why = f"skor terbaik {best['score']['S']:.3f} < {threshold}" if best["score"]["S"] < threshold \
-        else f"selisih dua kandidat teratas {gap:.3f} < {min_gap}"
+        return LinkResult("matched", best, ranked, f"S={_id(best['score']['S'])}, selisih={_id(gap)}")
+    why = f"skor terbaik {_id(best['score']['S'])} < {_id(threshold, 2)}" if best["score"]["S"] < threshold \
+        else f"selisih dua kandidat teratas {_id(gap)} < {_id(min_gap, 2)}"
     return LinkResult("ambiguous", None, ranked, f"Identitas ambigu: {why}")
 
 

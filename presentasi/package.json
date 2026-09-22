@@ -1,0 +1,15 @@
+{
+  "name": "presentasi-outreach-control",
+  "private": true,
+  "description": "Generator deck presentasi Kelompok 1 (pptxgenjs)",
+  "scripts": {
+    "build": "node build-deck.js"
+  },
+  "dependencies": {
+    "lucide-react": "^1.47.0",
+    "pptxgenjs": "^4.0.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "sharp": "^0.35.4"
+  }
+}

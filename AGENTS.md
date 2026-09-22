@@ -11,6 +11,8 @@ Terakhir diperbarui: 2026-09-17.
   - **Prototipe "Outreach Control"** (sejak 2026-09-17): `backend/` (Python FastAPI, agen, orchestrator, scheduler)
     dan `frontend/` (React + TypeScript + Vite). Detail: [docs/runbook-aplikasi.md](docs/runbook-aplikasi.md).
   - Konteks produk dan desain UI: [PRODUCT.md](PRODUCT.md).
+  - Deck presentasi: `presentasi/Presentasi_Outreach_Control_Kelompok_1.pptx`, dibangun dari `presentasi/build-deck.js`
+    (pptxgenjs). Angka di deck harus sama dengan laporan §9.3. Tangkapan layar bersama: `docs/gambar/`.
 - Prototipe terhubung ke layanan **sungguhan** lewat `.env`: OpenRouter (LLM), Apify, Firecrawl, Google Sheets
   (database), dan Gmail API (kirim). Semua memakai kredit atau akun milik pengguna.
 - Repo Git: https://github.com/adityanrrhmn/agen-cerdas-enterprise (private, branch `main`); README untuk tim. Tenggat: 17-09-2026. Rubrik penilaian resmi belum ada di workspace.
