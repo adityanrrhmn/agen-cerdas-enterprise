@@ -104,10 +104,20 @@ cd ..
 copy .env.example .env      # lalu isi nilainya, lihat bagian berikut
 ```
 
-Jalankan (Windows): `powershell -ExecutionPolicy Bypass -File run-dev.ps1`. Perintah ini membuka backend di
-`http://127.0.0.1:8000` dan dashboard di **http://localhost:5173**.
+**Jalankan (Windows, satu perintah):**
 
-Manual (semua OS):
+```powershell
+powershell -ExecutionPolicy Bypass -File run-dev.ps1
+```
+
+Perintah ini membuka backend (`http://127.0.0.1:8000`) dan dashboard (`http://localhost:5173`) masing-masing di
+jendela PowerShell terpisah, lalu membuka browser secara otomatis. `-ExecutionPolicy Bypass` hanya berlaku untuk
+proses ini (tidak mengubah kebijakan eksekusi PowerShell secara permanen di komputer Anda). Jalankan dari root
+folder repo, dan pastikan langkah **Backend**, **Frontend**, dan **Konfigurasi** di atas sudah selesai lebih dulu —
+skrip ini mengasumsikan `backend/.venv` dan `frontend/node_modules` sudah terpasang. Tutup kedua jendela PowerShell
+yang terbuka untuk menghentikan server.
+
+**Manual (semua OS, dua terminal terpisah):**
 
 ```bash
 cd backend && .venv/Scripts/python -m uvicorn app.main:app --port 8000   # macOS/Linux: .venv/bin/python
