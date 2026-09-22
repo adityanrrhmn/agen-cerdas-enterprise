@@ -720,19 +720,30 @@ class Orchestrator:
             raise KeyError("Draft tidak ditemukan")
         if email["draft_version"] != draft_version:
             raise ValueError(f"Versi draft berubah (sekarang v{email['draft_version']}); muat ulang sebelum menyetujui")
-        if email["status"] == "AWAITING_APPROVAL":
+        draft_only = self.s.draft_only
+        # Draf FINAL (dibuat di mode draf) boleh disetujui untuk dikirim setelah Gmail dikonfigurasi.
+        pending = email["status"] if email["status"] != "FINAL" or draft_only else \
+            {"PASS": "AWAITING_APPROVAL", "REVIEW": "NEEDS_REVIEW"}.get(email["security_decision"], "BLOCKED")
+        if pending == "AWAITING_APPROVAL":
             pass
-        elif email["status"] == "NEEDS_REVIEW" and acknowledge_review:
+        elif pending == "NEEDS_REVIEW" and acknowledge_review:
             pass
-        elif email["status"] == "NEEDS_REVIEW":
+        elif pending == "NEEDS_REVIEW":
             raise ValueError("Draft perlu review: centang konfirmasi bahwa alasan review sudah diperiksa")
         else:
-            raise ValueError(f"Draft berstatus {email['status']} tidak dapat disetujui")
+            raise ValueError(f"Draft berstatus {email['status']} tidak dapat {'difinalkan' if draft_only else 'disetujui'}")
         if not email["body"] or not email["subject"]:
             raise ValueError("Draft kosong tidak dapat disetujui")
+        campaign = self._campaign(email["campaign_id"])
+        if draft_only:  # mode draf: hasilnya isi email final; tidak ada antrean kirim, email penerima opsional
+            row = self.db.upsert("Emails", {"send_key": send_key, "status": "FINAL", "approved_at": now_iso(),
+                                            "approval_hash": approval_hash(email, campaign), "error": "",
+                                            "updated_at": now_iso()})
+            self.audit("user", f"draft {send_key} v{draft_version} difinalkan (mode draf)" + (" setelah review" if acknowledge_review else ""))
+            self.bus.emit("approval", f"Draft {email['lead_id']} v{draft_version} difinalkan", send_key=send_key)
+            return row
         if not EMAIL_RE.match(email["to_email"] or ""):
             raise ValueError("Isi email penerima yang valid sebelum menyetujui")
-        campaign = self._campaign(email["campaign_id"])
         limit = campaign.get("max_recipients") or 0
         taken = recipients(self.db, campaign["campaign_id"], COMMITTED, exclude_key=send_key)
         if limit and email["to_email"].lower() not in taken and len(taken) >= limit:
@@ -821,7 +832,7 @@ class Orchestrator:
         tasks = self.db.all("Tasks", campaign_id=campaign_id, occurrence_id=occ)
         if campaign["status"] != "RUNNING" or not tasks or any(t["status"] not in {"DONE", "FAILED"} for t in tasks):
             return False
-        if len(emails) < len(tasks) or any(e["status"] not in FINAL_EMAIL for e in emails):
+        if len(emails) < len(tasks) or any(e["status"] not in FINAL_EMAIL | {"FINAL"} for e in emails):
             return False
         if campaign["cadence"] == "once" or campaign["current_occurrence"] >= campaign["max_occurrences"]:
             self.db.upsert("Campaigns", {"campaign_id": campaign_id, "status": "COMPLETED", "updated_at": now_iso()})

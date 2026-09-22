@@ -66,6 +66,8 @@ class Settings:
     send_interval_seconds: int = 20
 
     simulate_integrations: bool = False
+    # auto: mode draf bila GOOGLE_CLIENT_ID/SECRET belum diisi; draft: selalu draf; send: selalu mode kirim
+    delivery_mode: str = "auto"
 
     runtime_a_workers: int = 3
     runtime_b_workers: int = 2
@@ -106,6 +108,15 @@ class Settings:
 
     def configured(self, integration: str) -> bool:
         return not self.missing(integration)
+
+    @property
+    def draft_only(self) -> bool:
+        """Mode draf: aplikasi hanya menyusun isi email; tidak ada antrean kirim."""
+        if self.delivery_mode == "draft":
+            return True
+        if self.delivery_mode == "send":
+            return False
+        return not self.configured("gmail") and not self.simulate_integrations
 
     def recipient_allowed(self, email: str) -> bool:
         email = email.strip().lower()
@@ -150,6 +161,7 @@ def load_settings(env_file: Path | None = None) -> Settings:
         gmail_allowlist=[x for x in _str("GMAIL_ALLOWLIST").split(",") if x.strip()],
         send_interval_seconds=_int("SEND_INTERVAL_SECONDS", 20),
         simulate_integrations=_bool("SIMULATE_INTEGRATIONS"),
+        delivery_mode=(_str("DELIVERY_MODE", "auto").lower() if _str("DELIVERY_MODE", "auto").lower() in {"auto", "draft", "send"} else "auto"),
         runtime_a_workers=_int("RUNTIME_A_WORKERS", 3),
         runtime_b_workers=_int("RUNTIME_B_WORKERS", 2),
         batch_size=_int("BATCH_SIZE", 25),

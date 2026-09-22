@@ -11,7 +11,7 @@ from urllib.parse import quote
 import httpx
 from fastapi import Body, FastAPI, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -156,6 +156,9 @@ async def system(request: Request):
         "integrations": [{"name": n, "purpose": INTEGRATION_INFO[n], "mode": st.modes[n], "missing": s.missing(n)}
                          for n in INTEGRATION_INFO],
         "model": s.openrouter_model,
+        "delivery": {"mode": "draft" if s.draft_only else "send", "setting": s.delivery_mode,
+                     "reason": ("GOOGLE_CLIENT_ID/SECRET belum diisi" if s.delivery_mode == "auto" else "DELIVERY_MODE=draft")
+                     if s.draft_only else ""},
         "sending": {"enabled": s.gmail_send_enabled, "blocked_reason": st.scheduler.blocked_reason(),
                     "allowlist": s.gmail_allowlist, "interval_seconds": s.send_interval_seconds,
                     "sender": st.oauth.sender_email if st.oauth else ""},
@@ -390,6 +393,55 @@ async def reconcile(send_key: str, request: Request, outcome: str = Body(embed=T
     if outcome not in {"sent", "not_sent"}:
         raise HTTPException(400, "outcome harus sent atau not_sent")
     return guard(S(request).orch.reconcile, send_key, outcome)
+
+
+def _eml(email: dict[str, Any], campaign: dict[str, Any]) -> bytes:
+    from email.message import EmailMessage
+    msg = EmailMessage()
+    if email.get("to_email"):
+        msg["To"] = email["to_email"]
+    msg["Subject"] = email["subject"]
+    msg["X-Unsent"] = "1"  # dibuka sebagai draf baru oleh Outlook/Thunderbird
+    msg.set_content(email["body"])
+    return msg.as_bytes()
+
+
+@app.get("/api/emails/{send_key}/eml")
+async def download_eml(send_key: str, request: Request):
+    st = S(request)
+    email = st.db.get("Emails", send_key)
+    if not email or not email["body"]:
+        raise HTTPException(404, "Draft tidak ditemukan atau masih kosong")
+    campaign = st.db.get("Campaigns", email["campaign_id"])
+    name = f"{email['lead_id']}-v{email['draft_version']}.eml"
+    return Response(_eml(email, campaign), media_type="message/rfc822",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/campaigns/{campaign_id}/export.csv")
+async def export_csv(campaign_id: str, request: Request):
+    import csv
+    import io
+    st = S(request)
+    campaign = guard(st.orch._campaign, campaign_id)
+    occ = st.orch.occurrence_id(campaign)
+    evidence = {}
+    for f in st.db.all("Evidence"):
+        evidence[f["fact_id"]] = f
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["lead_id", "nama", "instansi", "email_penerima", "status", "keputusan_security", "versi", "subjek", "isi",
+                "fakta_dipakai", "alasan_review"])
+    for lead in st.db.all("Leads", campaign_id=campaign_id):
+        e = st.db.get("Emails", f"{campaign_id}:{occ}:{lead['lead_id']}:step1") or {}
+        facts = [f"{evidence[i]['value']} [{evidence[i]['source_url']}]" for i in e.get("used_fact_ids") or [] if i in evidence]
+        reasons = [r["message"] for r in e.get("security_reasons") or [] if r["level"] != "info"]
+        w.writerow([lead["lead_id"], lead["name"], lead["company"] or (lead.get("hints") or {}).get("organization") or "",
+                    e.get("to_email", lead["email"]), e.get("status", lead["stage"]), e.get("security_decision", ""),
+                    e.get("draft_version", ""), e.get("subject", ""), e.get("body", ""), " | ".join(facts), " | ".join(reasons)])
+    data = "\ufeff" + out.getvalue()  # BOM agar Excel membaca UTF-8
+    return Response(data.encode("utf-8"), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{campaign_id}-draf-email.csv"'})
 
 
 @app.get("/api/campaigns/{campaign_id}/emails")

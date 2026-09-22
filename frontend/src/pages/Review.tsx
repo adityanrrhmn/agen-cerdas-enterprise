@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Ban, Check, ExternalLink, Pause, Pencil, Play, Search, ShieldAlert, Undo2, X } from "lucide-react";
+import { Ban, Check, ClipboardCopy, Copy, Download, ExternalLink, FileSpreadsheet, Pause, Pencil, Play, Search, ShieldAlert, Undo2, X } from "lucide-react";
 import { api, type CampaignSummary, type Email, type Evidence, type LeadDetail, type LeadRow } from "../api";
 import { usePoll } from "../hooks";
-import { Button, Empty, Notice, STAGE_LABEL, StatusBadge, fmtDate, fmtNum, fmtTime, fmtUsd, useAction } from "../ui";
+import { Button, Empty, Notice, STAGE_LABEL, StatusBadge, fmtDate, fmtNum, fmtTime, fmtUsd, useAction, useToast } from "../ui";
 
 type Filter = "all" | "ready" | "review" | "blocked" | "progress" | "sent";
 
@@ -12,15 +12,16 @@ const FILTERS: { key: Filter; label: string; match: (l: LeadRow) => boolean }[] 
   { key: "review", label: "Perlu review", match: (l) => ["NEEDS_REVIEW", "NEEDS_IDENTITY", "NEEDS_REAPPROVAL", "SENT_UNKNOWN"].includes(l.email_status) },
   { key: "blocked", label: "Diblokir", match: (l) => l.email_status === "BLOCKED" || l.decision === "BLOCK" },
   { key: "progress", label: "Diproses", match: (l) => !l.email_status },
-  { key: "sent", label: "Disetujui & terkirim", match: (l) => ["APPROVED", "SENDING", "SENT", "FAILED", "NOT_SENT"].includes(l.email_status) },
+  { key: "sent", label: "Disetujui & terkirim", match: (l) => ["APPROVED", "SENDING", "SENT", "FAILED", "NOT_SENT", "FINAL"].includes(l.email_status) },
 ];
 
 interface Props {
   summary: CampaignSummary;
   onChanged: () => void;
+  draftMode: boolean;
 }
 
-export default function Review({ summary, onChanged }: Props) {
+export default function Review({ summary, onChanged, draftMode }: Props) {
   const id = summary.campaign.campaign_id;
   const leads = usePoll(() => api.leads(id), 2500, [id]);
   const [filter, setFilter] = useState<Filter>("all");
@@ -47,7 +48,7 @@ export default function Review({ summary, onChanged }: Props) {
           {FILTERS.map((f) => (
             <button key={f.key} role="tab" aria-selected={filter === f.key} className={`segment seg-${f.key}`} onClick={() => setFilter(f.key)}>
               <span className="seg-count">{fmtNum(counts[f.key] ?? 0)}</span>
-              <span className="seg-label">{f.label}</span>
+              <span className="seg-label">{f.key === "sent" && draftMode ? "Final" : f.label}</span>
             </button>
           ))}
         </div>
@@ -58,12 +59,25 @@ export default function Review({ summary, onChanged }: Props) {
               {paused ? "Lanjutkan" : "Jeda"}
             </Button>
           )}
+          <a className="btn btn-secondary btn-md" href={api.exportUrl(id)} download>
+            <FileSpreadsheet size={16} aria-hidden /><span>Unduh semua (CSV)</span>
+          </a>
           <Button variant="primary" icon={<Check size={16} />} disabled={!counts.ready} busy={busy === "bulk"}
-            onClick={async () => { await run("bulk", () => api.approvePass(id), (r) => `${r.approved} draft disetujui dan masuk antrean kirim.`); refreshAll(); }}>
-            Setujui semua yang lolos ({fmtNum(counts.ready ?? 0)})
+            onClick={async () => {
+              await run("bulk", () => api.approvePass(id),
+                (r) => draftMode ? `${r.approved} draf difinalkan.` : `${r.approved} draft disetujui dan masuk antrean kirim.`);
+              refreshAll();
+            }}>
+            {draftMode ? "Finalkan" : "Setujui"} semua yang lolos ({fmtNum(counts.ready ?? 0)})
           </Button>
         </div>
       </div>
+      {draftMode && (
+        <Notice title="Mode draf">
+          Agen menyusun dan memeriksa isi email, tetapi aplikasi tidak mengirim apa pun. Finalkan draf, lalu salin atau unduh
+          (.eml / CSV) untuk dikirim dari email Anda sendiri.
+        </Notice>
+      )}
       {paused && <Notice tone="warn" title="Campaign dijeda">Agen berhenti di checkpoint terdekat dan scheduler tidak mengirim email.</Notice>}
 
       <div className="review-body">
@@ -94,7 +108,7 @@ export default function Review({ summary, onChanged }: Props) {
             ))}
           </ul>
         </section>
-        {selected ? <LeadPanel key={selected} leadId={selected} onChanged={refreshAll} /> : (
+        {selected ? <LeadPanel key={selected} leadId={selected} onChanged={refreshAll} draftMode={draftMode} /> : (
           <section className="panel detail"><Empty title="Pilih lead">Detail draft, bukti, dan alasan keputusan muncul di sini.</Empty></section>
         )}
       </div>
@@ -102,7 +116,7 @@ export default function Review({ summary, onChanged }: Props) {
   );
 }
 
-function LeadPanel({ leadId, onChanged }: { leadId: string; onChanged: () => void }) {
+function LeadPanel({ leadId, onChanged, draftMode }: { leadId: string; onChanged: () => void; draftMode: boolean }) {
   const detail = usePoll(() => api.lead(leadId), 3000, [leadId]);
   const d = detail.data;
   if (detail.error) return <section className="panel detail"><Notice tone="error">{detail.error}</Notice></section>;
@@ -133,9 +147,9 @@ function LeadPanel({ leadId, onChanged }: { leadId: string; onChanged: () => voi
       </header>
 
       <Reasons detail={d} />
-      {!d.lead.email && <EmailFill leadId={d.lead.lead_id} onChanged={refresh} />}
+      {!d.lead.email && <EmailFill leadId={d.lead.lead_id} onChanged={refresh} optional={draftMode} />}
       {d.email?.status === "NEEDS_IDENTITY" && <IdentityReview detail={d} onChanged={refresh} />}
-      {d.email && d.email.status !== "NEEDS_IDENTITY" && d.email.body && <Draft email={d.email} facts={facts} order={order} onChanged={refresh} />}
+      {d.email && d.email.status !== "NEEDS_IDENTITY" && d.email.body && <Draft email={d.email} facts={facts} order={order} onChanged={refresh} draftMode={draftMode} />}
       {!d.email && <Empty title="Agen masih bekerja">Tahap sekarang: {STAGE_LABEL[d.lead.stage] ?? d.lead.stage}{d.task?.host ? ` di runtime ${d.task.host}` : ""}.</Empty>}
       {d.email?.status === "BLOCKED" && !d.email.body && <p className="muted small">Kontak diblokir sebelum draft ditulis; tidak ada biaya LLM.</p>}
 
@@ -162,16 +176,16 @@ function Reasons({ detail }: { detail: LeadDetail }) {
   );
 }
 
-function EmailFill({ leadId, onChanged }: { leadId: string; onChanged: () => void }) {
+function EmailFill({ leadId, onChanged, optional }: { leadId: string; onChanged: () => void; optional: boolean }) {
   const [value, setValue] = useState("");
   const { busy, run } = useAction();
   return (
-    <form className="email-fill" onSubmit={async (e) => {
+    <form className={`email-fill ${optional ? "is-optional" : ""}`} onSubmit={async (e) => {
       e.preventDefault();
       const ok = await run("email", () => api.setLeadEmail(leadId, value), "Email disimpan; draft diperiksa ulang.");
       if (ok !== undefined) onChanged();
     }}>
-      <label htmlFor={`email-${leadId}`}>Email penerima belum ada</label>
+      <label htmlFor={`email-${leadId}`}>{optional ? "Email penerima (opsional, ikut di file .eml)" : "Email penerima belum ada"}</label>
       <input id={`email-${leadId}`} type="email" required value={value} onChange={(e) => setValue(e.target.value)} placeholder="nama@instansi.ac.id" />
       <Button type="submit" size="sm" variant="primary" busy={busy === "email"}>Simpan email</Button>
     </form>
@@ -227,7 +241,31 @@ function highlight(body: string, facts: Evidence[], order: Map<string, number>) 
   });
 }
 
-function Draft({ email, facts, order, onChanged }: { email: Email; facts: Evidence[]; order: Map<string, number>; onChanged: () => void }) {
+function CopyTools({ email }: { email: Email }) {
+  const toast = useToast();
+  const copy = async (label: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(`${label} disalin.`);
+    } catch {
+      toast("Browser menolak akses clipboard. Salin manual dari teks di atas.", "error");
+    }
+  };
+  return (
+    <div className="copy-tools" aria-label="Ambil hasil draf">
+      <Button size="sm" icon={<Copy size={14} />} onClick={() => copy("Subjek", email.subject)}>Salin subjek</Button>
+      <Button size="sm" icon={<Copy size={14} />} onClick={() => copy("Isi email", email.body)}>Salin isi</Button>
+      <Button size="sm" icon={<ClipboardCopy size={14} />} onClick={() => copy("Subjek dan isi", `Subjek: ${email.subject}\n\n${email.body}`)}>Salin semua</Button>
+      <a className="btn btn-secondary btn-sm" href={api.emlUrl(email.send_key)} download>
+        <Download size={14} aria-hidden /><span>Unduh .eml</span>
+      </a>
+    </div>
+  );
+}
+
+function Draft({ email, facts, order, onChanged, draftMode }: {
+  email: Email; facts: Evidence[]; order: Map<string, number>; onChanged: () => void; draftMode: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [subject, setSubject] = useState(email.subject);
   const [body, setBody] = useState(email.body);
@@ -237,8 +275,9 @@ function Draft({ email, facts, order, onChanged }: { email: Email; facts: Eviden
   useEffect(() => { if (!editing) { setSubject(email.subject); setBody(email.body); } }, [email.subject, email.body, editing]);
 
   const canApprove = email.status === "AWAITING_APPROVAL" || (email.status === "NEEDS_REVIEW" && ack);
-  const editable = ["AWAITING_APPROVAL", "NEEDS_REVIEW", "APPROVED", "NEEDS_REAPPROVAL"].includes(email.status);
-  const suppressible = !["SENT", "SENDING", "BLOCKED"].includes(email.status);
+  const editable = ["AWAITING_APPROVAL", "NEEDS_REVIEW", "APPROVED", "NEEDS_REAPPROVAL", "FINAL"].includes(email.status);
+  const suppressible = Boolean(email.to_email) && !["SENT", "SENDING", "BLOCKED"].includes(email.status);
+  const verb = draftMode ? "Finalkan" : "Setujui";
 
   return (
     <article className="draft">
@@ -250,16 +289,17 @@ function Draft({ email, facts, order, onChanged }: { email: Email; facts: Eviden
         </div>
       </header>
       <dl className="mail-meta">
-        <div><dt>Kepada</dt><dd>{email.to_email || <span className="warn-text">belum diisi</span>}</dd></div>
+        <div><dt>Kepada</dt><dd>{email.to_email || (draftMode ? <span className="muted">tidak diisi (opsional)</span> : <span className="warn-text">belum diisi</span>)}</dd></div>
         <div><dt>Subjek</dt><dd>{editing ? <input value={subject} onChange={(e) => setSubject(e.target.value)} aria-label="Subjek" /> : email.subject}</dd></div>
-        <div><dt>Jadwal</dt><dd>{fmtDate(email.schedule)}</dd></div>
+        {!draftMode && <div><dt>Jadwal</dt><dd>{fmtDate(email.schedule)}</dd></div>}
       </dl>
       {editing ? (
         <>
           <textarea className="mail-edit" rows={12} value={body} onChange={(e) => setBody(e.target.value)} aria-label="Isi email" />
           <div className="draft-actions">
             <Button variant="primary" busy={busy === "save"} onClick={async () => {
-              const r = await run("save", () => api.editEmail(email.send_key, subject, body), (x) => `Tersimpan sebagai v${x.draft_version}; pemeriksaan ulang: ${x.security_decision}. Approval lama batal.`);
+              const r = await run("save", () => api.editEmail(email.send_key, subject, body),
+                (x) => `Tersimpan sebagai v${x.draft_version}; pemeriksaan ulang: ${x.security_decision}. ${draftMode ? "Finalisasi" : "Approval"} lama batal.`);
               if (r) { setEditing(false); onChanged(); }
             }}>Simpan &amp; periksa ulang</Button>
             <Button variant="ghost" icon={<Undo2 size={14} />} onClick={() => setEditing(false)}>Batal</Button>
@@ -278,14 +318,25 @@ function Draft({ email, facts, order, onChanged }: { email: Email; facts: Eviden
           )}
           <div className="draft-actions">
             <Button variant="primary" icon={<Check size={16} />} disabled={!canApprove} busy={busy === "approve"}
-              onClick={async () => { await run("approve", () => api.approve(email.send_key, email.draft_version, ack), `Draft v${email.draft_version} disetujui.`); onChanged(); }}>
-              Setujui v{email.draft_version}
+              onClick={async () => {
+                await run("approve", () => api.approve(email.send_key, email.draft_version, ack),
+                  draftMode ? `Draf v${email.draft_version} final; siap disalin atau diunduh.` : `Draft v${email.draft_version} disetujui.`);
+                onChanged();
+              }}>
+              {verb} v{email.draft_version}
             </Button>
             <Button variant="ghost" icon={<X size={16} />} busy={busy === "reject"}
-              onClick={async () => { await run("reject", () => api.reject(email.send_key), "Draft ditolak; tidak akan dikirim."); onChanged(); }}>Tolak</Button>
+              onClick={async () => { await run("reject", () => api.reject(email.send_key), draftMode ? "Draf dibuang." : "Draft ditolak; tidak akan dikirim."); onChanged(); }}>Tolak</Button>
           </div>
         </footer>
       )}
+      {!editing && email.status === "FINAL" && (
+        <footer className="approve-bar is-final">
+          <p className="small"><strong>Draf final v{email.draft_version}.</strong> Salin atau unduh, lalu kirim dari email Anda sendiri.
+            Edit akan membuka kembali pemeriksaan.</p>
+        </footer>
+      )}
+      {!editing && draftMode && email.status !== "BLOCKED" && <CopyTools email={email} />}
       {email.status === "SENT_UNKNOWN" && (
         <footer className="approve-bar">
           <p className="small">Gmail tidak memberi hasil pasti. Periksa folder Terkirim di akun pengirim, lalu catat hasilnya. Sistem tidak mengirim ulang otomatis.</p>

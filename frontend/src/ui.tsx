@@ -25,6 +25,7 @@ const STATUS: Record<string, { label: string; tone: Tone; icon: typeof CheckCirc
   NEEDS_IDENTITY: { label: "Identitas ambigu", tone: "review", icon: HelpCircle },
   BLOCKED: { label: "Diblokir", tone: "block", icon: Ban },
   APPROVED: { label: "Disetujui, antre", tone: "info", icon: Clock3 },
+  FINAL: { label: "Final", tone: "done", icon: CheckCircle2 },
   SENDING: { label: "Mengirim", tone: "info", icon: Send },
   SENT: { label: "Diterima Gmail", tone: "done", icon: MailCheck },
   SENT_UNKNOWN: { label: "Status tak pasti", tone: "review", icon: HelpCircle },

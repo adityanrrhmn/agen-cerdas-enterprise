@@ -455,7 +455,10 @@ class SecurityAgent:
         reasons = []
         email = (lead.get("email") or "").strip().lower()
         if not email:
-            reasons.append(reason("review", "no_email", "Email penerima belum diisi; draft tidak dapat disetujui sebelum diisi"))
+            if self.s.draft_only:
+                reasons.append(reason("info", "no_email", "Email penerima belum diisi (opsional di mode draf)"))
+            else:
+                reasons.append(reason("review", "no_email", "Email penerima belum diisi; draft tidak dapat disetujui sebelum diisi"))
         elif not EMAIL_RE.match(email):
             reasons.append(reason("block", "email_invalid", "Format email tidak valid"))
         if email in suppressed:
@@ -483,7 +486,7 @@ class SecurityAgent:
         for w in draft.get("warnings") or []:
             reasons.append(reason("review", "writer_warning", w))
         if context.get("link") == "not_found" and campaign.get("personalization") == "per_lead":
-            reasons.append(reason("review", "no_enrichment", "Identitas tidak terverifikasi oleh enrichment; periksa sebelum menyetujui"))
+            reasons.append(reason("review", "no_enrichment", "Identitas tidak terverifikasi oleh enrichment; periksa sebelum dipakai"))
         if context.get("incidents"):
             reasons.append(reason("review", "prompt_injection", f"{len(context['incidents'])} halaman sumber memuat instruksi mencurigakan dan dibuang"))
         if context.get("dropped"):
@@ -492,7 +495,7 @@ class SecurityAgent:
             for e in context["integration_errors"]:
                 reasons.append(reason("review", "integration_error", e))
         email = (lead.get("email") or "").lower()
-        if not self.s.recipient_allowed(email):
+        if not self.s.draft_only and not self.s.recipient_allowed(email):
             reasons.append(reason("info", "outside_allowlist", "Penerima di luar GMAIL_ALLOWLIST: tidak akan dikirim"))
         return reasons
 

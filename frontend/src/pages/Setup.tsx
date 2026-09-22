@@ -61,13 +61,15 @@ export default function Setup({ summary, system, onCreated, onChanged, onStarted
 
 function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; system: SystemInfo | null }) {
   const [f, setF] = useState(INITIAL);
+  const draftMode = system?.delivery.mode === "draft";
   const { busy, run } = useAction();
   const set = <K extends keyof typeof INITIAL>(k: K, v: (typeof INITIAL)[K]) => setF((prev) => ({ ...prev, [k]: v }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const immediate = draftMode || (f.single_recipient && f.send_now);  // mode draf tidak punya jadwal kirim
     const payload = { ...f, max_occurrences: f.cadence === "once" || f.single_recipient ? null : f.max_occurrences,
-      send_now: f.single_recipient && f.send_now, schedule: f.single_recipient && f.send_now ? "" : f.schedule };
+      send_now: immediate, schedule: immediate ? "" : f.schedule };
     const created = await run("create", () => api.createCampaign(payload),
       "Campaign dibuat. Lanjut muat lead.");
     if (created) onCreated(created.campaign_id);
@@ -81,12 +83,12 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
           <label className={`mode ${f.single_recipient ? "is-on" : ""}`}>
             <input type="radio" name="mode" checked={f.single_recipient} onChange={() => set("single_recipient", true)} />
             <User size={18} aria-hidden />
-            <span><strong>Satu orang</strong><small>Tepat 1 penerima, dikunci sistem. Cocok untuk kontak penting atau uji kirim.</small></span>
+            <span><strong>Satu orang</strong><small>{draftMode ? "Satu draf email untuk satu orang, dikunci sistem." : "Tepat 1 penerima, dikunci sistem. Cocok untuk kontak penting atau uji kirim."}</small></span>
           </label>
           <label className={`mode ${!f.single_recipient ? "is-on" : ""}`}>
             <input type="radio" name="mode" checked={!f.single_recipient} onChange={() => set("single_recipient", false)} />
             <Users size={18} aria-hidden />
-            <span><strong>Banyak lead</strong><small>Impor CSV atau tambah beberapa lead; dikirim bertahap.</small></span>
+            <span><strong>Banyak lead</strong><small>{draftMode ? "Impor CSV atau tambah beberapa lead; satu draf per lead." : "Impor CSV atau tambah beberapa lead; dikirim bertahap."}</small></span>
           </label>
         </div>
       </fieldset>
@@ -140,35 +142,35 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
       </fieldset>
 
       <fieldset>
-        <legend>Pengirim, jadwal &amp; batas</legend>
+        <legend>{draftMode ? "Pengirim & batas" : "Pengirim, jadwal & batas"}</legend>
         <div className="grid-2">
-          <Field label="Nama pengirim" hint={system?.google.email ? `Dikirim dari ${system.google.email}` : "Akun Gmail belum dihubungkan (tab Koneksi)"}>
+          <Field label="Nama pengirim" hint={draftMode ? "Dipakai sebagai penutup email." : system?.google.email ? `Dikirim dari ${system.google.email}` : "Akun Gmail belum dihubungkan (tab Koneksi)"}>
             <input required value={f.sender_name} onChange={(e) => set("sender_name", e.target.value)} />
           </Field>
-          {f.single_recipient ? (
+          {f.single_recipient ? (draftMode ? null : (
             <Field label="Waktu kirim">
               <label className="consent">
                 <input type="checkbox" checked={f.send_now} onChange={(e) => set("send_now", e.target.checked)} />
                 <span>Kirim segera setelah draft disetujui</span>
               </label>
             </Field>
-          ) : (
+          )) : (
             <Field label="Jumlah lead" hint="Lead berlebih di CSV diabaikan; tidak ada penggantian diam-diam.">
               <input type="number" required min={1} max={1000} value={f.count} onChange={(e) => set("count", Number(e.target.value))} />
             </Field>
           )}
-          {!(f.single_recipient && f.send_now) && (
+          {!draftMode && !(f.single_recipient && f.send_now) && (
             <Field label="Mulai jendela kirim" hint={f.single_recipient ? "Email dikirim pada atau setelah waktu ini, setelah disetujui." : "Email dikirim bertahap mulai waktu ini."}>
               <input type="datetime-local" required value={f.schedule} onChange={(e) => set("schedule", e.target.value)} />
             </Field>
           )}
-          <Field label="Zona waktu">
+          {!draftMode && <Field label="Zona waktu">
             <select value={f.timezone} onChange={(e) => set("timezone", e.target.value)}>
               <option value="Asia/Jakarta">WIB (Asia/Jakarta)</option>
               <option value="Asia/Makassar">WITA (Asia/Makassar)</option>
               <option value="Asia/Jayapura">WIT (Asia/Jayapura)</option>
             </select>
-          </Field>
+          </Field>}
           <Field label="Anggaran LLM (US$)" hint="Penulisan berhenti dan lead masuk review bila anggaran habis. 0 = tanpa batas.">
             <input type="number" min={0} step={0.5} value={f.budget} onChange={(e) => set("budget", Number(e.target.value))} />
           </Field>
@@ -289,24 +291,35 @@ function LeadsStep({ summary, isDraft, onChanged, onStarted, system }: {
 function Readiness({ system }: { system: SystemInfo | null }) {
   if (!system) return null;
   const label = { live: "Siap", simulasi: "Simulasi", belum: "Belum", lokal: "Lokal" } as const;
+  const draftMode = system.delivery.mode === "draft";
   return (
     <section className="panel step-card">
       <h3>Kesiapan layanan</h3>
       <ul className="readiness">
-        {system.integrations.map((i) => (
+        {system.integrations.filter((i) => !(draftMode && i.name === "gmail")).map((i) => (
           <li key={i.name}>
             <span className={`dot dot-${i.mode}`} aria-hidden />
             <span className="readiness-name">{i.purpose}</span>
             <span className={`readiness-state state-${i.mode}`}>{label[i.mode]}</span>
           </li>
         ))}
-        <li>
-          <span className={`dot dot-${system.google.connected ? "live" : "belum"}`} aria-hidden />
-          <span className="readiness-name">Akun Gmail pengirim</span>
-          <span className={`readiness-state state-${system.google.connected ? "live" : "belum"}`}>{system.google.connected ? "Terhubung" : "Belum"}</span>
-        </li>
+        {draftMode ? (
+          <li>
+            <span className="dot dot-lokal" aria-hidden />
+            <span className="readiness-name">Pengiriman email</span>
+            <span className="readiness-state state-lokal">Opsional</span>
+          </li>
+        ) : (
+          <li>
+            <span className={`dot dot-${system.google.connected ? "live" : "belum"}`} aria-hidden />
+            <span className="readiness-name">Akun Gmail pengirim</span>
+            <span className={`readiness-state state-${system.google.connected ? "live" : "belum"}`}>{system.google.connected ? "Terhubung" : "Belum"}</span>
+          </li>
+        )}
       </ul>
-      {system.sending.blocked_reason && <p className="field-hint">Pengiriman ditahan: {system.sending.blocked_reason}.</p>}
+      {draftMode
+        ? <p className="field-hint">Mode draf: keluaran berupa isi email yang bisa disalin atau diunduh. Pengiriman langsung aktif setelah Google Client ID/Secret diisi (tab Koneksi).</p>
+        : system.sending.blocked_reason && <p className="field-hint">Pengiriman ditahan: {system.sending.blocked_reason}.</p>}
     </section>
   );
 }

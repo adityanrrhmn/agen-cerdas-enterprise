@@ -17,8 +17,20 @@ export default function Connections({ system, onChanged, googleResult }: {
       {googleResult?.status === "connected" && <Notice title="Akun Google terhubung">Email akan dikirim dari {g.email || "akun yang login"}.</Notice>}
       {googleResult?.status === "error" && <Notice tone="error" title="Gagal menghubungkan akun Google">{googleResult.detail}</Notice>}
 
+      {system.delivery.mode === "draft" && (
+        <section className="panel draft-explain">
+          <header className="panel-head"><h2>Mode draf aktif</h2><span className="muted small">{system.delivery.reason}</span></header>
+          <div className="draft-explain-body">
+            <p>Semua agen tetap bekerja (enrichment, riset bukti, penulisan, pemeriksaan keamanan). Hasil akhirnya adalah
+              <strong> isi email</strong> yang bisa difinalkan, disalin, atau diunduh sebagai .eml/CSV. Aplikasi tidak mengirim email.</p>
+            <p className="muted small">Untuk mengirim langsung dari aplikasi: isi <code>GOOGLE_CLIENT_ID</code> dan <code>GOOGLE_CLIENT_SECRET</code> di
+              .env, restart backend, lalu hubungkan akun Google di bawah. Mode juga bisa dipaksa dengan <code>DELIVERY_MODE=draft</code>.</p>
+          </div>
+        </section>
+      )}
+
       <section className="panel google">
-        <header className="panel-head"><h2>Akun Gmail pengirim</h2></header>
+        <header className="panel-head"><h2>Akun Gmail pengirim{system.delivery.mode === "draft" ? " (opsional)" : ""}</h2></header>
         {g.connected ? (
           <div className="google-row">
             <div>
@@ -41,12 +53,12 @@ export default function Connections({ system, onChanged, googleResult }: {
             </a>
           </div>
         )}
-        <dl className="readout compact">
+        {system.delivery.mode !== "draft" && <dl className="readout compact">
           <div><dt>Pengiriman</dt><dd>{system.sending.enabled ? "Aktif" : "Nonaktif"} (GMAIL_SEND_ENABLED){system.sending.blocked_reason ? ` · ditahan: ${system.sending.blocked_reason}` : ""}</dd></div>
           <div><dt>Allowlist penerima</dt><dd>{system.sending.allowlist.length ? system.sending.allowlist.join(", ") : "kosong: tidak ada email yang akan dikirim"}</dd></div>
           <div><dt>Jeda antar-email</dt><dd>{system.sending.interval_seconds} detik</dd></div>
           <div><dt>Redirect OAuth</dt><dd className="mono">{g.redirect_uri}</dd></div>
-        </dl>
+        </dl>}
       </section>
 
       <section className="panel">
@@ -59,7 +71,9 @@ export default function Connections({ system, onChanged, googleResult }: {
               return (
                 <tr key={i.name}>
                   <td><strong className="cap">{i.name}</strong><span className="cell-sub">{i.purpose}</span></td>
-                  <td><span className={`readiness-state state-${i.mode}`}>{MODE[i.mode]}</span></td>
+                  <td>{system.delivery.mode === "draft" && i.name === "gmail" && i.mode === "belum"
+                    ? <span className="readiness-state state-lokal">Opsional (mode draf)</span>
+                    : <span className={`readiness-state state-${i.mode}`}>{MODE[i.mode]}</span>}</td>
                   <td>
                     {i.missing.length > 0 && <span className="cell-sub">Kurang: <code>{i.missing.join(", ")}</code></span>}
                     {i.name === "openrouter" && <span className="cell-sub">Model: {system.model}</span>}

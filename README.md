@@ -7,7 +7,7 @@ pemeriksaan keamanan; manusia memegang keputusan kirim.
 Rancangan lengkapnya ada di `Laporan_Multi_Agent_Email_Writer_Enrichment_Kelompok_1.docx`. Kode ini mengikuti laporan
 tersebut; nomor bagian (§) di README merujuk ke laporan.
 
-> **Status (17-09-2026):** 39 tes backend lulus dan alur lengkap sudah dicoba dalam mode simulasi. Koneksi ke
+> **Status (22-09-2026):** 43 tes backend lulus dan alur lengkap sudah dicoba dalam mode simulasi. Koneksi ke
 > OpenRouter, Apify, Firecrawl, dan Google Sheets sudah diuji (tanpa biaya). **Belum diuji:** campaign dengan
 > layanan live dan pengiriman Gmail sungguhan. Lihat [Status & keterbatasan](#status--keterbatasan).
 
@@ -113,6 +113,10 @@ cd backend && .venv/Scripts/python -m uvicorn app.main:app --port 8000   # macOS
 cd frontend && npm run dev
 ```
 
+**Belum punya Google Client ID/Secret?** Aplikasi tetap berjalan dalam **mode draf**: semua agen bekerja, dan hasil
+akhirnya berupa isi email yang bisa difinalkan, disalin, atau diunduh (.eml per draf, CSV per campaign). Tidak ada
+email yang dikirim. Mode diatur `DELIVERY_MODE=auto|draft|send` (default `auto`).
+
 **Tanpa key sama sekali?** Set `SIMULATE_INTEGRATIONS=true` dan `DATA_BACKEND=local` di `.env`. Semua layanan akan
 memakai data fiktif; UI menandainya dengan jelas dan tidak ada biaya.
 
@@ -129,7 +133,7 @@ Bagikan key ke anggota tim lewat kanal privat, bukan lewat repo atau grup chat u
 | Apify (enrichment) | `APIFY_TOKEN`, `APIFY_ENRICHMENT_ACTOR`, `APIFY_ENRICHMENT_INPUT` | Actor `anchor~linkedin-profile-enrichment` butuh URL LinkedIn. Lead tanpa `linkedin_url` tidak memanggil Apify (tanpa biaya) |
 | Firecrawl (riset web) | `FIRECRAWL_API_KEY` | Satu pencarian per lead |
 | Google Sheets | `GOOGLE_SERVICE_ACCOUNT_FILE`, `SHEETS_SPREADSHEET_ID` | Lihat langkah di bawah |
-| Gmail | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GMAIL_ALLOWLIST`, `GMAIL_SEND_ENABLED` | Tanpa refresh token manual; hubungkan lewat tombol di dashboard |
+| Gmail (opsional) | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GMAIL_ALLOWLIST`, `GMAIL_SEND_ENABLED` | Kosong = mode draf. Tanpa refresh token manual; hubungkan lewat tombol di dashboard |
 
 **Google Sheets (service account):**
 1. Google Cloud Console → aktifkan **Google Sheets API** dan **Gmail API**.
@@ -171,6 +175,11 @@ Tombol **Tes** di tab Koneksi memeriksa tiap layanan tanpa biaya.
   setelah mencentang konfirmasi.
 - Nama ambigu: pilih kandidat yang benar, atau lanjutkan tanpa enrichment.
 
+**Mode draf** (Google Client ID/Secret kosong atau `DELIVERY_MODE=draft`): label kuning "Mode draf" tampil di bar atas.
+Langkah 2 menjadi **Preview & Finalisasi**. Tombol "Setujui" menjadi **Finalkan**, dan email penerima opsional. Draf final
+bisa di-**Salin subjek / Salin isi / Salin semua / Unduh .eml**, dan seluruh campaign bisa diunduh lewat **Unduh semua (CSV)**.
+Pengaman izin kontak, grounding, dan review identitas tetap berlaku.
+
 **3. Monitor**
 - Alur task per tahap, runtime A/B (pindahkan task atau matikan runtime untuk melihat migrasi), riwayat migrasi,
   antrean kirim, biaya dan token, serta pesan antaragen secara langsung.
@@ -200,7 +209,7 @@ Jalankan agen → periksa draft dan bukti → Setujui → email terkirim beberap
 ## Pengujian
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q     # 39 tes; tanpa jaringan dan tanpa key
+cd backend && .venv/Scripts/python -m pytest -q     # 43 tes; tanpa jaringan dan tanpa key
 cd frontend && npx tsc -b                            # cek tipe
 ```
 
@@ -217,7 +226,7 @@ Verifikasi tampilan tanpa biaya (backend simulasi + screenshot desktop/mobile): 
 
 | Hal | Status |
 |---|---|
-| Logika agen, orchestrator, migrasi, scheduler, lead manual, satu penerima | Lulus (39 tes) |
+| Logika agen, orchestrator, migrasi, scheduler, lead manual, satu penerima, mode draf | Lulus (43 tes) |
 | Koneksi OpenRouter, Apify, Firecrawl, Google Sheets | Lulus (tes tanpa biaya) |
 | Alur lengkap via dashboard | Lulus di mode **simulasi** |
 | Campaign dengan layanan live | **Belum diuji** (memakai kredit) |

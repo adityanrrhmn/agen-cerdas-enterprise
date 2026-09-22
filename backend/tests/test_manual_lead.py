@@ -74,7 +74,7 @@ def test_riset_orang_hanya_memakai_halaman_yang_menyebut_nama_dan_instansi():
 
 
 def test_email_kosong_menjadi_review_bukan_blokir_dan_email_salah_tetap_blokir():
-    sec = SecurityAgent(Settings())
+    sec = SecurityAgent(Settings(delivery_mode="send"))  # di mode kirim, email wajib sebelum disetujui
     lead = {"email": "", "permission_status": "granted"}
     assert sec.decide(sec.check_contact(lead, set(), False)) == "REVIEW"
     assert sec.decide(sec.check_contact({**lead, "email": "azhari#ugm"}, set(), False)) == "BLOCK"

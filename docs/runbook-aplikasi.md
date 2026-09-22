@@ -27,6 +27,15 @@ ubah `APP_URL` ke alamat tersebut agar login Google kembali ke tempat yang benar
 | Dashboard | `frontend/src/pages/{Setup,Review,Monitor,Connections}.tsx` | Setup → Preview & Approval → Monitor, ditambah Koneksi |
 | Data fiktif | `backend/scripts/generate_fictitious_data.py` → `backend/data/leads_fiktif.csv`, `simulasi.json` | 100 lead `.example`, 20 kasus uji; `linkedin_url` sengaja kosong |
 
+## Mode draf (tanpa Gmail)
+
+`Settings.draft_only`: `DELIVERY_MODE=draft`, atau `auto` (default) dengan `GOOGLE_CLIENT_ID/SECRET` kosong dan tanpa
+simulasi. Dampaknya: approve menghasilkan status `FINAL` (bukan `APPROVED`); email penerima opsional (`no_email` = info)
+dan peringatan allowlist tidak muncul; scheduler tidak mengirim. Campaign otomatis COMPLETED bila semua email final
+(termasuk `FINAL`). Unduhan: `GET /api/emails/{send_key}/eml` (header `X-Unsent: 1`, dibuka sebagai draf baru di klien
+email) dan `GET /api/campaigns/{id}/export.csv` (UTF-8 BOM untuk Excel). Draf `FINAL` bisa diedit (pemeriksaan dibuka
+lagi), dan bisa disetujui untuk dikirim bila nanti mode berubah ke kirim.
+
 ## Mode satu penerima
 
 Pilihan "Satu orang" di form campaign (`single_recipient`, opsional `send_now`). Backend memaksa `count=1`,
@@ -66,7 +75,7 @@ URL LinkedIn opsional; izin kontak harus dicentang (tanpa izin = BLOCK). Hanya u
 
 | Hal | Status | Bukti |
 |---|---|---|
-| Logika agen, orchestrator, migrasi, scheduler, lead manual, mode satu penerima | Lulus | 39 tes pytest |
+| Logika agen, orchestrator, migrasi, scheduler, lead manual, mode satu penerima, mode draf | Lulus | 43 tes pytest |
 | Bentuk request OpenRouter/Apify/Firecrawl/Gmail/Sheets/OAuth | Lulus (transport tiruan) | `tests/test_integrations.py`, `tests/test_linkedin_enrichment.py` |
 | Key OpenRouter, token Apify, key Firecrawl, akses Sheets | Lulus (live, tanpa biaya) | Tes di tab Koneksi; tab Sheets dibuat |
 | Alur ujung ke ujung via API + UI | Lulus di **simulasi** | 40 lead: 29 lolos, 6 review, 5 blokir; migrasi A→B gen 2 |

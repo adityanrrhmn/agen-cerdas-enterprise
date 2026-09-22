@@ -58,7 +58,7 @@ Untuk perubahan prototipe:
 
 | Pemeriksaan | Perintah | Kriteria lulus |
 |---|---|---|
-| Tes backend | `backend\.venv\Scripts\python -m pytest -q` (dari `backend/`) | Semua lulus (39 pada 2026-09-17) |
+| Tes backend | `backend\.venv\Scripts\python -m pytest -q` (dari `backend/`) | Semua lulus (43 pada 2026-09-22) |
 | Tipe frontend | `npx tsc -b` (dari `frontend/`) | Tanpa galat |
 | Tampilan | Backend simulasi + `node tools/screenshot.mjs ...` (lihat runbook aplikasi) | Desktop 1440 dan mobile 390 tanpa overflow |
 | Koneksi layanan | Tombol **Tes** di tab Koneksi, atau `POST /api/integrations/<nama>/test` | `ok: true`; tanpa biaya |

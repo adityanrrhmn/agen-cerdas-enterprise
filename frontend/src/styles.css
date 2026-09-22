@@ -215,6 +215,20 @@ legend { font-weight: 700; color: var(--teal-900); padding: 0; margin-bottom: 8p
 .state-simulasi, .state-lokal { color: var(--amber-600); }
 .state-belum { color: var(--block); }
 
+/* ---------------------------------------------------------------- mode draf */
+.mode-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font: inherit; font-size: 12px;
+  font-weight: 700; background: var(--amber-accent); color: var(--teal-950); border: 0; cursor: pointer;
+}
+.mode-chip:hover { background: #f5c565; }
+.copy-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px 14px; border-top: 1px solid var(--line-2); }
+.approve-bar.is-final { background: var(--teal-50); }
+.email-fill.is-optional { background: var(--teal-50); border-bottom-color: var(--line); }
+.email-fill.is-optional label { color: var(--teal-900); }
+.output-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px 14px; flex-wrap: wrap; }
+.draft-explain { border-color: var(--amber-200); background: var(--amber-50); }
+.draft-explain-body { display: flex; flex-direction: column; gap: 6px; padding: 0 16px 14px; max-width: 80ch; }
+
 /* ---------------------------------------------------------------- mode penerima */
 .mode-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .mode { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer; background: var(--surface); color: var(--ink-2); transition: border-color 160ms ease-out, background-color 160ms ease-out; }

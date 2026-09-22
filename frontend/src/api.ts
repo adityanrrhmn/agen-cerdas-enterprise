@@ -135,6 +135,7 @@ export interface SystemInfo {
   google: { configured: boolean; connected: boolean; email: string; connected_at?: string; connect_url: string; redirect_uri: string };
   integrations: Integration[];
   model: string;
+  delivery: { mode: "draft" | "send"; setting: string; reason: string };
   sending: { enabled: boolean; blocked_reason: string | null; allowlist: string[]; interval_seconds: number; sender: string };
   limits: { batch_size: number; workers: number; max_facts: number; max_revisions: number; entity_threshold: number; entity_gap: number };
   simulate: boolean;
@@ -273,6 +274,8 @@ export const api = {
     request<Email>("POST", `/emails/${enc(key)}/approve`, { draft_version, acknowledge_review }),
   reject: (key: string) => request("POST", `/emails/${enc(key)}/reject`),
   reconcile: (key: string, outcome: "sent" | "not_sent") => request("POST", `/emails/${enc(key)}/reconcile`, { outcome }),
+  emlUrl: (key: string) => `/api/emails/${enc(key)}/eml`,
+  exportUrl: (id: string) => `/api/campaigns/${enc(id)}/export.csv`,
   queue: (id: string) => request<QueueRow[]>("GET", `/campaigns/${enc(id)}/emails`),
   runtimes: () => request<{ runtimes: RuntimeInfo[]; migrations: Migration[] }>("GET", "/runtimes"),
   setOnline: (name: string, online: boolean) => request<{ moved: number }>("POST", `/runtimes/${name}/online`, { online }),

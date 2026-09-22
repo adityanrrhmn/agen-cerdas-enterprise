@@ -34,6 +34,9 @@ class Scheduler:
             self._task.cancel()
 
     def blocked_reason(self) -> str | None:
+        if self.s.draft_only:
+            why = "DELIVERY_MODE=draft" if self.s.delivery_mode == "draft" else "Google Client ID/Secret belum diisi"
+            return f"Mode draf: aplikasi hanya menyusun isi email ({why})"
         if not self.simulated and not self.s.configured("gmail"):
             return f"Gmail belum dikonfigurasi ({', '.join(self.s.missing('gmail'))})"
         if not self.simulated and not (self.gmail.oauth and self.gmail.oauth.status()["connected"]):

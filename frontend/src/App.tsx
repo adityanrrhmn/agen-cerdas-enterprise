@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Mail, Plus } from "lucide-react";
+import { FileText, Mail, Plus } from "lucide-react";
 import { api } from "./api";
 import { usePoll } from "./hooks";
 import Connections from "./pages/Connections";
@@ -62,7 +62,9 @@ export default function App() {
 
   const sys = system.data;
   const simulated = sys?.integrations.some((i) => i.mode === "simulasi");
-  const connection = !sys ? null : sys.integrations.every((i) => i.mode === "live") && sys.google.connected ? "ok" : "partial";
+  const draftMode = sys?.delivery.mode === "draft";
+  const connection = !sys ? null
+    : sys.integrations.every((i) => i.mode === "live" || (draftMode && i.name === "gmail")) && (draftMode || sys.google.connected) ? "ok" : "partial";
 
   return (
     <div className="app">
@@ -86,6 +88,11 @@ export default function App() {
             <Plus size={15} aria-hidden /><span>Baru</span>
           </button>
         </div>
+        {draftMode && (
+          <button className="mode-chip" onClick={() => setTab("koneksi")} title={sys?.delivery.reason}>
+            <FileText size={14} aria-hidden /> Mode draf · email tidak dikirim
+          </button>
+        )}
         <button className={`conn-state ${connection ?? ""}`} onClick={() => setTab("koneksi")}>
           <span className="dot" aria-hidden />
           {!sys ? "Menghubungi backend" : connection === "ok" ? `Semua layanan siap · ${sys.storage.backend === "sheets" ? "Google Sheets" : "file lokal"}` : "Periksa koneksi"}
@@ -96,7 +103,7 @@ export default function App() {
         {STEPS.map((s) => (
           <button key={s.key} className={`step ${tab === s.key ? "is-active" : ""} ${s.n ? "" : "step-aux"}`} aria-current={tab === s.key ? "page" : undefined} onClick={() => setTab(s.key)}>
             {s.n && <span className="step-n">{s.n}</span>}
-            {s.label}
+            {s.key === "review" && draftMode ? "Preview & Finalisasi" : s.label}
           </button>
         ))}
         {summary && (
@@ -116,8 +123,8 @@ export default function App() {
         {(tab === "review" || tab === "monitor") && !summary && (
           <section className="panel"><Empty title="Belum ada campaign dipilih">Buat campaign dan jalankan agen di langkah Setup.</Empty></section>
         )}
-        {tab === "review" && summary && <Review summary={summary} onChanged={campaigns.refresh} />}
-        {tab === "monitor" && summary && <Monitor summary={summary} />}
+        {tab === "review" && summary && <Review summary={summary} onChanged={campaigns.refresh} draftMode={draftMode} />}
+        {tab === "monitor" && summary && <Monitor summary={summary} draftMode={draftMode} />}
         {tab === "koneksi" && sys && <Connections system={sys} onChanged={system.refresh} googleResult={googleResult} />}
       </main>
     </div>

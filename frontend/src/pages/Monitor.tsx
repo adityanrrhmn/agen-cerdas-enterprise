@@ -14,7 +14,7 @@ const FLOW: { label: string; stages: string[] }[] = [
   { label: "Diputuskan", stages: ["decided", "blocked", "failed"] },
 ];
 
-export default function Monitor({ summary }: { summary: CampaignSummary }) {
+export default function Monitor({ summary, draftMode }: { summary: CampaignSummary; draftMode: boolean }) {
   const id = summary.campaign.campaign_id;
   const runtimes = usePoll(() => api.runtimes(), 1500, []);
   const metrics = usePoll(() => api.metrics(), 3000, []);
@@ -70,6 +70,16 @@ export default function Monitor({ summary }: { summary: CampaignSummary }) {
               </table>
             ) : <Empty title="Belum ada migrasi">Pindahkan task yang sedang berjalan, atau matikan satu runtime untuk melihat checkpoint dan generation baru.</Empty>}
           </section>
+          {draftMode ? (
+            <section className="panel">
+              <header className="panel-head"><h2>Keluaran draf</h2><span className="muted small">mode draf: tidak ada antrean kirim</span></header>
+              <div className="output-row">
+                <p><span className="num strong">{fmtNum(summary.email_status.FINAL ?? 0)}</span> draf final dari{" "}
+                  <span className="num strong">{fmtNum(summary.counts.tasks)}</span> lead</p>
+                <a className="btn btn-secondary btn-sm" href={api.exportUrl(summary.campaign.campaign_id)} download>Unduh semua (CSV)</a>
+              </div>
+            </section>
+          ) : (
           <section className="panel">
             <header className="panel-head"><h2>Antrean kirim</h2><span className="muted small">bertahap, jeda antar-email diatur di .env</span></header>
             {queue.data?.length ? (
@@ -88,6 +98,7 @@ export default function Monitor({ summary }: { summary: CampaignSummary }) {
               </table>
             ) : <Empty title="Antrean kosong">Draft yang disetujui muncul di sini sampai terkirim.</Empty>}
           </section>
+          )}
         </div>
 
         <div className="col">
