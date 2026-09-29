@@ -294,7 +294,7 @@ legend { font-weight: 700; color: var(--teal-900); padding: 0; margin-bottom: 8p
 
 .review-body { display: flex; flex-direction: column; }
 .review-body > *, .setup > *, .monitor-grid > * { min-width: 0; }
-.detail-head p, .mail-meta dd, .table td, .readout dd, .fact-value, .fact blockquote { overflow-wrap: anywhere; }
+.detail-head p, .detail-head h2, .mail-meta dd, .mail-body, .table td, .readout dd, .fact-value, .fact blockquote { overflow-wrap: anywhere; min-width: 0; }
 .skeleton-detail { border-radius: var(--radius-sm); background: linear-gradient(90deg, var(--line-2), var(--teal-50), var(--line-2)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; height: 420px; margin: 16px; }
 .skeleton-detail.short { height: 120px; }
 @keyframes shimmer { to { background-position: -200% 0; } }

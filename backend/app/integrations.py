@@ -325,7 +325,10 @@ class GmailClient:
         sender = self.oauth.sender_email
         if not sender:
             return SendOutcome.FAILED, "", "Akun Google pengirim belum dihubungkan"
-        raw = self.build_raw(sender_name, sender, to, subject, body)
+        try:
+            raw = self.build_raw(sender_name, sender, to, subject, body)
+        except ValueError as exc:  # mis. CR/LF di header: gagal sebelum ada request, aman ditandai FAILED
+            return SendOutcome.FAILED, "", f"Email tidak valid: {exc}"
         url = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
         for attempt in range(3):
             self.usage.calls[self.provider] += 1
@@ -457,6 +460,10 @@ class SimGmail(GmailClient):
 
     async def send(self, sender_name, to, subject, body):
         self.usage.calls[self.provider] += 1
+        try:  # simulasi ikut menolak email yang akan ditolak Gmail sungguhan (mis. CR/LF di subjek)
+            self.build_raw(sender_name, "simulasi@example.invalid", to, subject, body)
+        except ValueError as exc:
+            return SendOutcome.FAILED, "", f"Email tidak valid: {exc}"
         await asyncio.sleep(0.3)
         return SendOutcome.SENT, f"sim-{int(time.time() * 1000)}", ""
 

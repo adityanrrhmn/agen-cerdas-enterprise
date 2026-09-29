@@ -38,6 +38,23 @@ COMMITTED = {"APPROVED", "SENDING", "SENT", "SENT_UNKNOWN"}
 DELIVERY = {"SENDING", "SENT", "SENT_UNKNOWN"}
 CADENCE_DAYS = {"weekly": 7, "monthly": 30}
 REQUIRED_CAMPAIGN = ["name", "goal", "offer", "cta", "personalization", "sender_name", "schedule", "timezone", "count"]
+# Batas input (BUG-05/06/08). Sel Excel maksimal 32.767 karakter; angka di bawah menjaga UI dan ekspor tetap terbaca.
+MAX_CAMPAIGN_COUNT = 1000
+MAX_FIELD = 300          # nama, tujuan, penawaran, CTA, pengirim, judul, perusahaan
+MAX_TEXT = 5000          # template dan deskripsi panjang
+MAX_SUBJECT = 200
+MAX_BODY = 20000
+MAX_CELL = 5000          # satu sel CSV: baris yang lebih besar dilewati, bukan menggagalkan seluruh unggahan
+
+
+def lead_number(lead_id: str) -> int:
+    """Nomor urut lead dari id `CMP-...-L007` (dipakai untuk menentukan siapa yang 'lebih dulu')."""
+    tail = lead_id.rsplit("-L", 1)[-1]
+    return int(tail) if tail.isdigit() else 0
+
+
+def has_line_break(text: str) -> bool:
+    return any(ch in text for ch in ("\r", "\n", "\x00", "\u2028", "\u2029"))
 
 
 def sha(data: Any) -> str:
@@ -156,21 +173,45 @@ class Orchestrator:
 
     # ------------------------------------------------------------ campaign & leads
     def create_campaign(self, data: dict[str, Any]) -> dict[str, Any]:
-        data = dict(data)
+        data = {k: (v.strip() if isinstance(v, str) else v) for k, v in data.items()}  # nama spasi saja = kosong (BUG-08)
         single = bool(data.get("single_recipient"))
         if single:  # mode satu penerima: dikunci di backend, bukan hanya di UI
             data["count"], data["cadence"] = 1, "once"
+        tz_name = data.get("timezone") or self.s.default_timezone
+        try:
+            tz = ZoneInfo(tz_name)
+        except (KeyError, ValueError, OSError) as exc:  # ZoneInfoNotFoundError turunan KeyError: jangan jadi 404
+            raise ValueError(f"Zona waktu '{tz_name}' tidak dikenal (contoh: Asia/Jakarta)") from exc
         if data.get("send_now"):
-            data["schedule"] = datetime.now(ZoneInfo(data.get("timezone") or self.s.default_timezone)).replace(microsecond=0).isoformat()
+            data["schedule"] = datetime.now(tz).replace(microsecond=0).isoformat()
         missing = [k for k in REQUIRED_CAMPAIGN if data.get(k) in (None, "")]
         if missing:
             raise ValueError(f"Wajib diisi: {', '.join(missing)}")
+        for k in ("name", "goal", "offer", "cta", "sender_name"):
+            if len(str(data[k])) > MAX_FIELD:
+                raise ValueError(f"{k} maksimal {MAX_FIELD} karakter")
+        for k in ("template_subject", "template_body"):
+            if len(str(data.get(k) or "")) > MAX_TEXT:
+                raise ValueError(f"{k} maksimal {MAX_TEXT} karakter")
+        if has_line_break(str(data.get("template_subject") or "")):
+            raise ValueError("Subjek template tidak boleh berisi baris baru")
+        try:
+            count = int(data["count"])
+            budget = float(data.get("budget") or 0)
+            occurrences = int(data.get("max_occurrences") or 4)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("count, budget, dan max_occurrences harus berupa angka") from exc
+        if not 1 <= count <= MAX_CAMPAIGN_COUNT:
+            raise ValueError(f"count harus antara 1 dan {MAX_CAMPAIGN_COUNT}")
+        if not 0 <= budget < 1e9:
+            raise ValueError("budget tidak boleh negatif")
+        if not 1 <= occurrences <= 12:
+            raise ValueError("max_occurrences harus antara 1 dan 12")
         if data["personalization"] not in {"template", "segmen", "per_lead"}:
             raise ValueError("personalization harus template, segmen, atau per_lead")
         cadence = data.get("cadence") or "once"
         if cadence not in {"once", "weekly", "monthly"}:
             raise ValueError("cadence harus once, weekly, atau monthly")
-        tz = ZoneInfo(data["timezone"])
         schedule = datetime.fromisoformat(data["schedule"])
         if schedule.tzinfo is None:
             schedule = schedule.replace(tzinfo=tz)
@@ -185,10 +226,10 @@ class Orchestrator:
         row = {
             "campaign_id": campaign_id, "name": data["name"], "goal": data["goal"], "offer": data["offer"], "cta": data["cta"],
             "personalization": data["personalization"], "cadence": cadence,
-            "max_occurrences": 1 if cadence == "once" else int(data.get("max_occurrences") or 4),
-            "count": int(data["count"]), "max_recipients": 1 if single else 0,
+            "max_occurrences": 1 if cadence == "once" else occurrences,
+            "count": count, "max_recipients": 1 if single else 0,
             "timezone": data["timezone"], "schedule": schedule.isoformat(),
-            "budget": float(data.get("budget") or 0), "sender_name": data["sender_name"],
+            "budget": budget, "sender_name": data["sender_name"],
             "sender_email": data.get("sender_email") or "", "template_id": template_id, "status": "DRAFT",
             "current_occurrence": 1, "created_at": now_iso(), "updated_at": now_iso(),
         }
@@ -201,21 +242,33 @@ class Orchestrator:
         campaign = self._campaign(campaign_id)
         if campaign["status"] not in {"DRAFT"}:
             raise ValueError("Lead hanya dapat diimpor sebelum campaign dijalankan")
-        reader = csv.DictReader(io.StringIO(csv_text.lstrip("\ufeff")))
-        fields = {f.strip() for f in reader.fieldnames or []}
-        if "name" not in fields or not ({"company", "description"} & fields):
-            raise ValueError("CSV wajib memiliki kolom name dan company atau description")
-        existing = len(self.db.all("Leads", campaign_id=campaign_id))
-        added, skipped = 0, []
-        for n, raw in enumerate(reader, start=1):
-            if existing + added >= campaign["count"]:
-                break
-            row = {k.strip(): (v or "").strip() for k, v in raw.items() if k}
-            if not row.get("name") or not (row.get("company") or row.get("description")):
-                skipped.append(f"baris {n + 1}: name kosong, atau company dan description sama-sama kosong")
-                continue
-            self._insert_lead(campaign_id, existing + added + 1, row)
-            added += 1
+        csv_text = csv_text.lstrip("\ufeff")
+        try:
+            # Pembatas titik koma (Excel regional Indonesia) dikenali dari baris judul; selain itu koma.
+            head = csv_text.split("\n", 1)[0]
+            delimiter = ";" if head.count(";") > head.count(",") else ","
+            reader = csv.DictReader(io.StringIO(csv_text), delimiter=delimiter)
+            fields = {f.strip() for f in reader.fieldnames or []}
+            if "name" not in fields or not ({"company", "description"} & fields):
+                raise ValueError("CSV wajib memiliki kolom name dan company atau description")
+            existing = len(self.db.all("Leads", campaign_id=campaign_id))
+            accepted, skipped = [], []  # dimasukkan sekaligus setelah seluruh file terbaca: CSV rusak tidak meninggalkan impor separuh
+            for n, raw in enumerate(reader, start=1):
+                if existing + len(accepted) >= campaign["count"]:
+                    break
+                row = {k.strip(): (v or "").strip() for k, v in raw.items() if k}
+                if not row.get("name") or not (row.get("company") or row.get("description")):
+                    skipped.append(f"baris {n + 1}: name kosong, atau company dan description sama-sama kosong")
+                    continue
+                if any(len(v) > MAX_CELL for v in row.values()):
+                    skipped.append(f"baris {n + 1}: ada sel lebih dari {MAX_CELL} karakter")
+                    continue
+                accepted.append(row)
+        except csv.Error as exc:
+            raise ValueError(f"CSV tidak dapat dibaca (baris {reader.line_num}): {exc}") from exc
+        for i, row in enumerate(accepted, start=1):
+            self._insert_lead(campaign_id, existing + i, row)
+        added = len(accepted)
         self.audit("user", f"{added} lead diimpor ke {campaign_id}")
         return {"added": added, "skipped": skipped, "total": existing + added, "requested": campaign["count"]}
 
@@ -228,6 +281,9 @@ class Orchestrator:
         if existing >= campaign["count"]:
             raise ValueError(f"Jumlah lead sudah mencapai batas campaign ({campaign['count']})")
         row = {k: (str(v).strip() if v is not None else "") for k, v in data.items()}
+        for k, v in row.items():
+            if len(v) > (MAX_TEXT if k == "description" else MAX_FIELD):
+                raise ValueError(f"{k} terlalu panjang (maksimal {MAX_TEXT if k == 'description' else MAX_FIELD} karakter)")
         if len(row.get("name", "")) < 2:
             raise ValueError("Nama lengkap wajib diisi")
         if len(row.get("description", "")) < 5 and not row.get("company"):
@@ -251,6 +307,19 @@ class Orchestrator:
             "permission_status": row.get("permission_status", "").lower(), "permission_ref": row.get("permission_ref", ""),
             "stage": "imported", "decision": "", "reasons": [], "candidates": [], "identity": None, "updated_at": now_iso(),
         })
+
+    def _same_address_leads(self, lead: dict[str, Any], addr: str | None = None) -> list[dict[str, Any]]:
+        """Lead lain di campaign yang sama dengan alamat email yang sama (tanpa membedakan huruf besar/kecil)."""
+        addr = (addr if addr is not None else lead.get("email") or "").strip().lower()
+        if not addr:
+            return []
+        return [o for o in self.db.all("Leads", campaign_id=lead["campaign_id"])
+                if o["lead_id"] != lead["lead_id"] and (o.get("email") or "").strip().lower() == addr]
+
+    def _is_duplicate(self, lead: dict[str, Any]) -> bool:
+        """Duplikat = ada lead lain dengan alamat sama dan nomor urut lebih awal. Hasilnya sama di setiap restart."""
+        me = lead_number(lead["lead_id"])
+        return any(lead_number(o["lead_id"]) < me for o in self._same_address_leads(lead))
 
     def _campaign(self, campaign_id: str) -> dict[str, Any]:
         c = self.db.get("Campaigns", campaign_id)
@@ -423,7 +492,8 @@ class Orchestrator:
     def _validate(self, task: dict[str, Any], generation: int, duplicate: bool) -> bool:
         lead = self.db.get("Leads", task["lead_id"])
         suppressed = {r["email"].lower() for r in self.db.all("Suppression")}
-        reasons = self.security.check_contact(lead, suppressed, duplicate)
+        # Duplikat dihitung dari data tersimpan, bukan dari flag di memori: flag hilang saat restart/relaunch (BUG-02).
+        reasons = self.security.check_contact(lead, suppressed, duplicate or self._is_duplicate(lead))
         if not self._task_current(task["task_id"], generation):
             return False
         if self.security.decide(reasons) == "BLOCK":
@@ -572,6 +642,8 @@ class Orchestrator:
         email = self.db.get("Emails", send_key)
         if email and email["status"] in FINAL_EMAIL | {"SENDING"}:
             raise ValueError("Email sudah diproses kirim; alamat tidak dapat diubah")
+        if self._same_address_leads(lead, email_addr):
+            raise ValueError("Alamat ini sudah dipakai lead lain di campaign ini; satu alamat hanya boleh untuk satu lead")
         self.db.upsert("Leads", {"lead_id": lead_id, "email": email_addr, "updated_at": now_iso()})
         self.audit("user", f"email penerima {lead_id} diisi/diubah")
         if email:
@@ -720,11 +792,22 @@ class Orchestrator:
         task = self.db.get("Tasks", f"T-{email['lead_id']}-{email['occurrence_id']}")
         cp = (task or {}).get("checkpoint") or {}
         facts = [f for f in self.db.all("Evidence", lead_id=lead["lead_id"]) if f["fact_id"] in cp.get("selected_fact_ids", [])]
-        body = body.strip()
+        subject = (subject or "").strip()
+        if has_line_break(subject):
+            raise ValueError("Subjek tidak boleh berisi baris baru (CR/LF)")
+        if len(subject) > MAX_SUBJECT:
+            raise ValueError(f"Subjek maksimal {MAX_SUBJECT} karakter")
+        if len(body or "") > MAX_BODY:
+            raise ValueError(f"Isi email maksimal {MAX_BODY} karakter")
+        core = (body or "").replace(OPT_OUT_LINE, "").strip()  # isi tanpa baris berhenti (BUG-09)
+        body = (body or "").strip()
         if OPT_OUT_LINE not in body:
             body = f"{body}\n\n{OPT_OUT_LINE}"
-        draft = {"subject": subject.strip(), "body": body, "used_fact_ids": email["used_fact_ids"], "warnings": []}
-        reasons = self.security.check_contact(lead, {r["email"].lower() for r in self.db.all("Suppression")}, False)
+        draft = {"subject": subject, "body": body, "used_fact_ids": email["used_fact_ids"], "warnings": []}
+        reasons = self.security.check_contact(lead, {r["email"].lower() for r in self.db.all("Suppression")},
+                                              self._is_duplicate(lead))
+        if not subject or not core:
+            reasons.append(reason("review", "empty_draft", "Subjek atau isi email kosong; lengkapi sebelum disetujui"))
         reasons += self.security.check_draft(effective_lead(lead), campaign, draft, facts, {**cp, "integration_errors": []})
         decision = self.security.decide(reasons)
         was_approved = email["status"] == "APPROVED"
@@ -758,7 +841,7 @@ class Orchestrator:
             raise ValueError("Draft perlu review: centang konfirmasi bahwa alasan review sudah diperiksa")
         else:
             raise ValueError(f"Draft berstatus {email['status']} tidak dapat {'difinalkan' if draft_only else 'disetujui'}")
-        if not email["body"] or not email["subject"]:
+        if not email["subject"].strip() or not email["body"].replace(OPT_OUT_LINE, "").strip():
             raise ValueError("Draft kosong tidak dapat disetujui")
         campaign = self._campaign(email["campaign_id"])
         if draft_only:  # mode draf: hasilnya isi email final; tidak ada antrean kirim, email penerima opsional

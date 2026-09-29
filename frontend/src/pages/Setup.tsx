@@ -27,6 +27,9 @@ const INITIAL = {
   send_now: true,
 };
 
+const FIELD_LABEL = { name: "Nama campaign", goal: "Tujuan", offer: "Penawaran", cta: "Ajakan (CTA)", sender_name: "Nama pengirim" };
+const MAX_FIELD = 300;  // sama dengan batas di backend (orchestrator.MAX_FIELD)
+
 interface Props {
   summary: CampaignSummary | null;
   system: SystemInfo | null;
@@ -67,12 +70,19 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
   const [f, setF] = useState(INITIAL);
   const draftMode = system?.delivery.mode === "draft";
   const { busy, run } = useAction();
+  const toast = useToast();
   const set = <K extends keyof typeof INITIAL>(k: K, v: (typeof INITIAL)[K]) => setF((prev) => ({ ...prev, [k]: v }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const blank = (["name", "goal", "offer", "cta", "sender_name"] as const).find((k) => !String(f[k]).trim());
+    if (blank) {  // atribut `required` menerima spasi saja; backend menolaknya, tetapi beri pesan lebih dulu
+      toast(`${FIELD_LABEL[blank]} tidak boleh kosong atau hanya spasi.`, "error");
+      return;
+    }
     const immediate = draftMode || f.send_now;  // mode draf tidak punya jadwal kirim
-    const payload = { ...f, single_recipient: true, cadence: "once", max_occurrences: null, count: 1,
+    const payload = { ...f, name: f.name.trim(), goal: f.goal.trim(), offer: f.offer.trim(), cta: f.cta.trim(),
+      sender_name: f.sender_name.trim(), single_recipient: true, cadence: "once", max_occurrences: null, count: 1,
       send_now: immediate, schedule: immediate ? "" : f.schedule };
     const created = await run("create", () => api.createCampaign(payload),
       "Campaign dibuat. Lanjut muat lead.");
@@ -85,10 +95,10 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
         <legend>Tujuan &amp; penawaran</legend>
         <p className="legend-note">Setiap campaign mengirim ke tepat 1 penerima — cocok untuk kontak penting atau uji kirim.</p>
         <div className="grid-2">
-          <Field label="Nama campaign" span={2}><input required value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
-          <Field label="Tujuan" span={2}><input required value={f.goal} onChange={(e) => set("goal", e.target.value)} /></Field>
-          <Field label="Penawaran" span={2}><textarea required rows={2} value={f.offer} onChange={(e) => set("offer", e.target.value)} /></Field>
-          <Field label="Ajakan (CTA)" span={2}><input required value={f.cta} onChange={(e) => set("cta", e.target.value)} /></Field>
+          <Field label="Nama campaign" span={2}><input required maxLength={MAX_FIELD} value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
+          <Field label="Tujuan" span={2}><input required maxLength={MAX_FIELD} value={f.goal} onChange={(e) => set("goal", e.target.value)} /></Field>
+          <Field label="Penawaran" span={2}><textarea required rows={2} maxLength={MAX_FIELD} value={f.offer} onChange={(e) => set("offer", e.target.value)} /></Field>
+          <Field label="Ajakan (CTA)" span={2}><input required maxLength={MAX_FIELD} value={f.cta} onChange={(e) => set("cta", e.target.value)} /></Field>
         </div>
       </fieldset>
 
@@ -105,10 +115,10 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
           {f.personalization === "template" && (
             <>
               <Field label="Subjek template" span={2} hint="Placeholder: {name}, {company}, {sender_name}, {cta}">
-                <input required value={f.template_subject} onChange={(e) => set("template_subject", e.target.value)} />
+                <input required maxLength={200} value={f.template_subject} onChange={(e) => set("template_subject", e.target.value)} />
               </Field>
               <Field label="Isi template" span={2}>
-                <textarea required rows={5} value={f.template_body} onChange={(e) => set("template_body", e.target.value)} />
+                <textarea required rows={5} maxLength={5000} value={f.template_body} onChange={(e) => set("template_body", e.target.value)} />
               </Field>
             </>
           )}
@@ -119,7 +129,7 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
         <legend>{draftMode ? "Pengirim & batas" : "Pengirim, jadwal & batas"}</legend>
         <div className="grid-2">
           <Field label="Nama pengirim" hint={draftMode ? "Dipakai sebagai penutup email." : system?.google.email ? `Dikirim dari ${system.google.email}` : "Akun Gmail belum dihubungkan (tab Koneksi)"}>
-            <input required value={f.sender_name} onChange={(e) => set("sender_name", e.target.value)} />
+            <input required maxLength={MAX_FIELD} value={f.sender_name} onChange={(e) => set("sender_name", e.target.value)} />
           </Field>
           {!draftMode && (
             <Field label="Waktu kirim">
