@@ -237,11 +237,17 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     throw new ApiError("Backend tidak dapat dihubungi. Pastikan server berjalan di port 8000.");
   }
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: { detail?: unknown } | null = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;  // balasan bukan JSON (mis. "Internal Server Error"): jangan tampilkan galat parser mentah
+  }
   if (!res.ok) {
     const detail = data?.detail;
     throw new ApiError(typeof detail === "string" ? detail : `Permintaan gagal (HTTP ${res.status})`);
   }
+  if (text && data === null) throw new ApiError("Balasan server tidak dapat dibaca. Coba lagi atau periksa log backend.");
   return data as T;
 }
 

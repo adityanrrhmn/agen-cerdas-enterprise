@@ -90,6 +90,13 @@ class Scheduler:
         if not self.s.recipient_allowed(to):
             self._finish(key, "BLOCKED", error="Penerima di luar GMAIL_ALLOWLIST")
             return
+        # Pengaman terakhir (BUG-01): alamat yang sama tidak boleh menerima email dari lead lain pada kejadian yang sama.
+        twin = [e for e in self.db.all("Emails", campaign_id=campaign["campaign_id"], occurrence_id=current["occurrence_id"])
+                if e["send_key"] != key and e["lead_id"] != current["lead_id"] and e["status"] in DELIVERY
+                and (e["to_email"] or "").lower() == to]
+        if twin:
+            self._finish(key, "BLOCKED", error=f"Alamat yang sama sudah menerima email lain ({twin[0]['lead_id']}) di kejadian ini")
+            return
         limit = campaign.get("max_recipients") or 0
         delivered = recipients(self.db, campaign["campaign_id"], DELIVERY, exclude_key=key)
         if limit and to not in delivered and len(delivered) >= limit:
@@ -106,6 +113,9 @@ class Scheduler:
             outcome, gmail_id, error = await self.gmail.send(campaign["sender_name"], to, current["subject"], current["body"])
         except IntegrationError as exc:
             outcome, gmail_id, error = SendOutcome.FAILED, "", str(exc)
+        except Exception as exc:  # BUG-03: status SENDING tidak boleh menggantung. Tidak pasti apakah request terkirim -> jangan kirim ulang.
+            log.exception("Kirim %s gagal tak terduga", key)
+            outcome, gmail_id, error = SendOutcome.UNKNOWN, "", f"galat tak terduga: {type(exc).__name__}: {exc}"
         self._finish(key, outcome, gmail_id=gmail_id, error=error)
         await self.db.flush()
 

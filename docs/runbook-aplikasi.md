@@ -75,7 +75,7 @@ URL LinkedIn opsional; izin kontak harus dicentang (tanpa izin = BLOCK). Hanya u
 
 | Hal | Status | Bukti |
 |---|---|---|
-| Logika agen, orchestrator, migrasi, scheduler, lead manual, mode satu penerima, mode draf | Lulus | 43 tes pytest |
+| Logika agen, orchestrator, migrasi, scheduler, lead manual, mode satu penerima, mode draf | Lulus | 63 tes pytest (43 awal + 20 regresi `tests/test_bugfixes.py`) |
 | Bentuk request OpenRouter/Apify/Firecrawl/Gmail/Sheets/OAuth | Lulus (transport tiruan) | `tests/test_integrations.py`, `tests/test_linkedin_enrichment.py` |
 | Key OpenRouter, token Apify, key Firecrawl, akses Sheets | Lulus (live, tanpa biaya) | Tes di tab Koneksi; tab Sheets dibuat |
 | Alur ujung ke ujung via API + UI | Lulus di **simulasi** | 40 lead: 29 lolos, 6 review, 5 blokir; migrasi A→B gen 2 |
@@ -96,6 +96,19 @@ node tools/screenshot.mjs http://localhost:5174 .impeccable/review desktop-revie
 ```
 
 Hapus `backend/data/local-store.json` setelah selesai. Skrip screenshot melaporkan `OVERFLOW` bila ada scroll horizontal.
+
+## Aturan input dan duplikasi (hasil bug test 2026-09-29)
+
+- Batas panjang (backend dan form): nama/tujuan/penawaran/CTA/pengirim 300 karakter, deskripsi dan template 5.000, subjek 200,
+  isi email 20.000, satu sel CSV 5.000 (baris yang lebih besar dilewati). `count` 1–1000, `budget` >= 0, `max_occurrences` 1–12.
+- Subjek tidak boleh berisi baris baru (CR/LF). Zona waktu tidak dikenal dibalas 400, bukan 404.
+- Duplikat penerima dihitung dari data tersimpan (lead lain di campaign yang sama dengan alamat sama dan nomor lebih awal),
+  sehingga hasilnya sama setelah restart. Mengubah email lead ke alamat milik lead lain ditolak; scheduler juga memblokir
+  alamat yang sama pada kejadian yang sama sebagai pengaman terakhir.
+- Draf tanpa isi (hanya baris berhenti) atau tanpa subjek = REVIEW `empty_draft` dan tidak dapat disetujui.
+- Permintaan POST/PUT/DELETE baru dibalas setelah data ditulis ke penyimpanan (bukan menunggu batch 2 detik).
+- CSV impor dapat memakai pembatas koma atau titik koma; file rusak dibalas 400 tanpa impor separuh. Ekspor CSV
+  menetralkan sel yang diawali `= + - @` dengan tanda petik.
 
 ## Masalah umum
 

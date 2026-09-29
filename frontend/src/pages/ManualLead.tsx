@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { api, type LeadRow, type ManualLead } from "../api";
-import { Button, Field, useAction } from "../ui";
+import { Button, Field, useAction, useToast } from "../ui";
 
 const EMPTY: ManualLead = { name: "", description: "", email: "", company: "", linkedin_url: "", permission_granted: false, permission_ref: "" };
 
@@ -10,11 +10,17 @@ export function ManualLeadForm({ campaignId, onAdded }: { campaignId: string; on
   const [f, setF] = useState<ManualLead>(EMPTY);
   const [more, setMore] = useState(false);
   const { busy, run } = useAction();
+  const toast = useToast();
   const set = <K extends keyof ManualLead>(k: K, v: ManualLead[K]) => setF((p) => ({ ...p, [k]: v }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const lead = await run("add", () => api.addLead(campaignId, f), (l) => `${l.name} ditambahkan.`);
+    if (f.name.trim().length < 2) {  // `required` menerima spasi saja
+      toast("Nama lengkap minimal 2 karakter (bukan spasi).", "error");
+      return;
+    }
+    const lead = await run("add", () => api.addLead(campaignId, { ...f, name: f.name.trim(), description: f.description.trim() }),
+      (l) => `${l.name} ditambahkan.`);
     if (lead) {
       setF(EMPTY);
       onAdded();
@@ -25,22 +31,22 @@ export function ManualLeadForm({ campaignId, onAdded }: { campaignId: string; on
     <form className="manual-lead" onSubmit={submit}>
       <h4>Tambah lead manual</h4>
       <Field label="Nama lengkap">
-        <input required minLength={2} value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Azhari" />
+        <input required minLength={2} maxLength={300} value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Azhari" />
       </Field>
       <Field label="Deskripsi" hint="Peran dan instansi. Agen memakai ini untuk mencari bukti tentang orang yang tepat.">
-        <textarea required minLength={5} rows={3} value={f.description} onChange={(e) => set("description", e.target.value)}
+        <textarea required minLength={5} maxLength={5000} rows={3} value={f.description} onChange={(e) => set("description", e.target.value)}
           placeholder="Dosen di UGM serta guru besar di sana" />
       </Field>
       <Field label="Email" hint="Boleh diisi nanti; draft tidak dapat disetujui sebelum email ada.">
-        <input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="nama@instansi.ac.id" />
+        <input type="email" maxLength={320} value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="nama@instansi.ac.id" />
       </Field>
       {more ? (
         <>
           <Field label="Instansi / perusahaan" hint="Kosongkan bila sudah jelas dari deskripsi.">
-            <input value={f.company} onChange={(e) => set("company", e.target.value)} />
+            <input maxLength={300} value={f.company} onChange={(e) => set("company", e.target.value)} />
           </Field>
           <Field label="URL LinkedIn" hint="Mengaktifkan enrichment Apify dan verifikasi identitas.">
-            <input type="url" value={f.linkedin_url} onChange={(e) => set("linkedin_url", e.target.value)} placeholder="https://www.linkedin.com/in/..." />
+            <input type="url" maxLength={500} value={f.linkedin_url} onChange={(e) => set("linkedin_url", e.target.value)} placeholder="https://www.linkedin.com/in/..." />
           </Field>
         </>
       ) : (
@@ -52,7 +58,7 @@ export function ManualLeadForm({ campaignId, onAdded }: { campaignId: string; on
       </label>
       {f.permission_granted && (
         <Field label="Dasar izin" hint="Contoh: kartu nama di seminar 12 Sep 2026, formulir webinar.">
-          <input value={f.permission_ref} onChange={(e) => set("permission_ref", e.target.value)} />
+          <input maxLength={300} value={f.permission_ref} onChange={(e) => set("permission_ref", e.target.value)} />
         </Field>
       )}
       <Button type="submit" icon={<UserPlus size={16} />} busy={busy === "add"}>Tambahkan lead</Button>
