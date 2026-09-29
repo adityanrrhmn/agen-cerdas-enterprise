@@ -10,17 +10,18 @@ from urllib.parse import quote
 
 import httpx
 from fastapi import Body, FastAPI, HTTPException, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .agents import EnrichmentAgent, ProfileHintAgent, ResearchAgent, SecurityAgent, WriterAgent
 from .config import BACKEND_DIR, ROOT, Settings, load_settings
 from .google_auth import SHEETS_SCOPE, GmailOAuth, GoogleAuthError, ServiceAccountTokenProvider
 from .integrations import (ApifyClient, FirecrawlClient, GmailClient, IntegrationError, OpenRouterClient, SimApify,
                            SimFirecrawl, SimGmail, SimLLM, SimulatedWorld, Usage)
-from .orchestrator import EventBus, Orchestrator
+from .orchestrator import MAX_BODY, MAX_CAMPAIGN_COUNT, MAX_FIELD, MAX_SUBJECT, MAX_TEXT, EventBus, Orchestrator
 from .scheduler import Scheduler
 from .store import DataGateway, LocalBackend, SheetsBackend
 
@@ -108,6 +109,58 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Outreach Control API", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=load_settings().cors_origins, allow_methods=["*"], allow_headers=["*"])
+
+
+class DurableWrites:
+    """BUG-07: permintaan yang mengubah data baru dibalas setelah data ditulis ke penyimpanan (bukan menunggu batch 2 dtk).
+
+    ASGI murni (bukan BaseHTTPMiddleware) agar SSE `/api/events` tidak terganggu. Gagal flush tidak menggagalkan respons:
+    batch berkala mencoba lagi, dan kegagalannya terlihat di status penyimpanan.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["method"] not in {"POST", "PUT", "PATCH", "DELETE"}:
+            return await self.app(scope, receive, send)
+        held: dict | None = None
+
+        async def flush() -> None:
+            st = getattr(scope["app"].state, "s", None)
+            if st is None:
+                return
+            try:
+                await st.db.flush()
+            except Exception:
+                log.exception("Flush setelah permintaan gagal; batch berkala akan mengulang")
+
+        async def wrapped(message):
+            nonlocal held
+            if message["type"] == "http.response.start":
+                held = message  # tahan sampai data tertulis
+                return
+            if held is not None:
+                if held["status"] < 400:
+                    await flush()
+                await send(held)
+                held = None
+            await send(message)
+
+        await self.app(scope, receive, wrapped)
+
+
+app.add_middleware(DurableWrites)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, exc: RequestValidationError):
+    """Pesan validasi berupa teks Indonesia singkat (UI hanya menampilkan `detail` bertipe string)."""
+    parts = []
+    for err in exc.errors()[:3]:
+        where = ".".join(str(x) for x in err["loc"] if x != "body")
+        parts.append(f"{where or 'input'}: {err['msg']}")
+    return JSONResponse({"detail": "Input tidak valid — " + "; ".join(parts)}, status_code=422)
 
 
 def S(request: Request) -> AppState:
@@ -229,20 +282,20 @@ async def test_integration(name: str, request: Request):
 
 # ---------------------------------------------------------------- campaign
 class CampaignIn(BaseModel):
-    name: str
-    goal: str
-    offer: str
-    cta: str
-    personalization: str = "per_lead"
-    cadence: str = "once"
-    max_occurrences: int | None = None
-    count: int = 1
-    timezone: str = "Asia/Jakarta"
-    schedule: str = ""
-    budget: float = 0
-    sender_name: str
-    template_subject: str = ""
-    template_body: str = ""
+    name: str = Field(max_length=MAX_FIELD)
+    goal: str = Field(max_length=MAX_FIELD)
+    offer: str = Field(max_length=MAX_FIELD)
+    cta: str = Field(max_length=MAX_FIELD)
+    personalization: str = Field(default="per_lead", max_length=20)
+    cadence: str = Field(default="once", max_length=20)
+    max_occurrences: int | None = Field(default=None, ge=1, le=12)
+    count: int = Field(default=1, ge=1, le=MAX_CAMPAIGN_COUNT)
+    timezone: str = Field(default="Asia/Jakarta", max_length=64)
+    schedule: str = Field(default="", max_length=40)
+    budget: float = Field(default=0, ge=0, le=1e9)
+    sender_name: str = Field(max_length=MAX_FIELD)
+    template_subject: str = Field(default="", max_length=MAX_SUBJECT)
+    template_body: str = Field(default="", max_length=MAX_TEXT)
     single_recipient: bool = False
     send_now: bool = False
 
@@ -275,14 +328,14 @@ async def upload_leads(campaign_id: str, file: UploadFile, request: Request):
 
 
 class LeadIn(BaseModel):
-    name: str
-    description: str = ""
-    email: str = ""
-    company: str = ""
-    title_hint: str = ""
-    linkedin_url: str = ""
+    name: str = Field(max_length=MAX_FIELD)
+    description: str = Field(default="", max_length=MAX_TEXT)
+    email: str = Field(default="", max_length=320)
+    company: str = Field(default="", max_length=MAX_FIELD)
+    title_hint: str = Field(default="", max_length=MAX_FIELD)
+    linkedin_url: str = Field(default="", max_length=500)
     permission_granted: bool = False
-    permission_ref: str = ""
+    permission_ref: str = Field(default="", max_length=MAX_FIELD)
 
 
 @app.post("/api/campaigns/{campaign_id}/leads")
@@ -291,7 +344,7 @@ async def add_lead(campaign_id: str, body: LeadIn, request: Request):
 
 
 @app.put("/api/leads/{lead_id}/email")
-async def set_lead_email(lead_id: str, request: Request, email: str = Body(embed=True)):
+async def set_lead_email(lead_id: str, request: Request, email: str = Body(embed=True, max_length=320)):
     return guard(S(request).orch.set_lead_email, lead_id, email)
 
 
@@ -364,8 +417,8 @@ async def suppress(request: Request, email: str = Body(embed=True), reason: str 
 
 # ---------------------------------------------------------------- email & approval
 class EditIn(BaseModel):
-    subject: str
-    body: str
+    subject: str = Field(max_length=MAX_SUBJECT)
+    body: str = Field(max_length=MAX_BODY)
 
 
 class ApproveIn(BaseModel):
@@ -400,7 +453,7 @@ def _eml(email: dict[str, Any], campaign: dict[str, Any]) -> bytes:
     msg = EmailMessage()
     if email.get("to_email"):
         msg["To"] = email["to_email"]
-    msg["Subject"] = email["subject"]
+    msg["Subject"] = " ".join((email["subject"] or "").split())  # CR/LF di header membuat EmailMessage menolak (BUG-03)
     msg["X-Unsent"] = "1"  # dibuka sebagai draf baru oleh Outlook/Thunderbird
     msg.set_content(email["body"])
     return msg.as_bytes()
@@ -430,15 +483,23 @@ async def export_csv(campaign_id: str, request: Request):
         evidence[f["fact_id"]] = f
     out = io.StringIO()
     w = csv.writer(out)
+
+    def safe(value: Any) -> Any:
+        """BUG-04: sel yang diawali = + - @ (atau tab/CR) dibaca Excel sebagai rumus; awali dengan tanda petik."""
+        if isinstance(value, str) and value.lstrip(" ")[:1] in {"=", "+", "-", "@", "\t", "\r"}:
+            return "'" + value
+        return value
+
     w.writerow(["lead_id", "nama", "instansi", "email_penerima", "status", "keputusan_security", "versi", "subjek", "isi",
                 "fakta_dipakai", "alasan_review"])
     for lead in st.db.all("Leads", campaign_id=campaign_id):
         e = st.db.get("Emails", f"{campaign_id}:{occ}:{lead['lead_id']}:step1") or {}
         facts = [f"{evidence[i]['value']} [{evidence[i]['source_url']}]" for i in e.get("used_fact_ids") or [] if i in evidence]
         reasons = [r["message"] for r in e.get("security_reasons") or [] if r["level"] != "info"]
-        w.writerow([lead["lead_id"], lead["name"], lead["company"] or (lead.get("hints") or {}).get("organization") or "",
-                    e.get("to_email", lead["email"]), e.get("status", lead["stage"]), e.get("security_decision", ""),
-                    e.get("draft_version", ""), e.get("subject", ""), e.get("body", ""), " | ".join(facts), " | ".join(reasons)])
+        w.writerow([safe(v) for v in (
+            lead["lead_id"], lead["name"], lead["company"] or (lead.get("hints") or {}).get("organization") or "",
+            e.get("to_email", lead["email"]), e.get("status", lead["stage"]), e.get("security_decision", ""),
+            e.get("draft_version", ""), e.get("subject", ""), e.get("body", ""), " | ".join(facts), " | ".join(reasons))])
     data = "\ufeff" + out.getvalue()  # BOM agar Excel membaca UTF-8
     return Response(data.encode("utf-8"), media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": f'attachment; filename="{campaign_id}-draf-email.csv"'})
@@ -447,6 +508,7 @@ async def export_csv(campaign_id: str, request: Request):
 @app.get("/api/campaigns/{campaign_id}/emails")
 async def send_queue(campaign_id: str, request: Request):
     st = S(request)
+    guard(st.orch._campaign, campaign_id)  # BUG-11: campaign tidak ada -> 404, bukan 200 []
     rows = st.db.all("Emails", campaign_id=campaign_id)
     keep = {"APPROVED", "SENDING", "SENT", "SENT_UNKNOWN", "FAILED", "NEEDS_REAPPROVAL", "NOT_SENT"}
     return sorted(({k: e[k] for k in ("send_key", "lead_id", "occurrence_id", "to_email", "subject", "schedule", "status",

@@ -290,12 +290,12 @@ function Draft({ email, facts, order, onChanged, draftMode }: {
       </header>
       <dl className="mail-meta">
         <div><dt>Kepada</dt><dd>{email.to_email || (draftMode ? <span className="muted">tidak diisi (opsional)</span> : <span className="warn-text">belum diisi</span>)}</dd></div>
-        <div><dt>Subjek</dt><dd>{editing ? <input value={subject} onChange={(e) => setSubject(e.target.value)} aria-label="Subjek" /> : email.subject}</dd></div>
+        <div><dt>Subjek</dt><dd>{editing ? <input value={subject} maxLength={200} onChange={(e) => setSubject(e.target.value.replace(/[\r\n]+/g, " "))} aria-label="Subjek" /> : email.subject}</dd></div>
         {!draftMode && <div><dt>Jadwal</dt><dd>{fmtDate(email.schedule)}</dd></div>}
       </dl>
       {editing ? (
         <>
-          <textarea className="mail-edit" rows={12} value={body} onChange={(e) => setBody(e.target.value)} aria-label="Isi email" />
+          <textarea className="mail-edit" rows={12} maxLength={20000} value={body} onChange={(e) => setBody(e.target.value)} aria-label="Isi email" />
           <div className="draft-actions">
             <Button variant="primary" busy={busy === "save"} onClick={async () => {
               const r = await run("save", () => api.editEmail(email.send_key, subject, body),
