@@ -9,6 +9,7 @@ import pytest
 
 import app.integrations as integ
 from app.config import BACKEND_DIR, Settings
+from app.agents import OPT_OUT_LINE
 from app.main import build_state
 
 HEADER = "crm_id,name,email,company,domain,title_hint,permission_status,permission_ref\n"
@@ -273,5 +274,71 @@ def test_review_identitas_dilanjutkan_setelah_pengguna_memilih_kandidat(tmp_path
             await wait_decided(st, c["campaign_id"])
             lead = st.db.get("Leads", lead["lead_id"])
             assert lead["stage"] == "decided" and lead["identity"]["company"] == rows[0]["company"]
+
+    asyncio.run(go())
+
+
+def test_draft_gagal_dapat_ditulis_ulang_tanpa_mengulang_enrichment(tmp_path):
+    """Writer yang gagal meninggalkan draft kosong; pengguna harus bisa menulis ulang.
+
+    Tulis ulang hanya menjalankan fase core, jadi tidak ada panggilan Apify/Firecrawl tambahan
+    dan approval lama batal karena draft_version naik.
+    """
+    csv_text, _ = sample_rows([NORMAL[0]])
+    gagal = {"aktif": True}
+    asli = integ.SimLLM.structured
+
+    async def kadang_gagal(self, system, user, schema_name, schema, campaign_id=""):
+        if schema_name == "email_draft" and gagal["aktif"]:
+            raise integ.IntegrationError("openrouter", "keluaran LLM bukan JSON")
+        return await asli(self, system, user, schema_name, schema, campaign_id)
+
+    async def go():
+        async with httpx.AsyncClient() as http:
+            st = build_state(settings(tmp_path), http)
+            await st.db.start(background=False)
+            c = new_campaign(st, 1)
+            st.orch.import_leads(c["campaign_id"], csv_text)
+            st.orch.run_campaign(c["campaign_id"])
+            await wait_decided(st, c["campaign_id"])
+
+            email = st.db.all("Emails")[0]
+            assert email["body"].strip() in ("", OPT_OUT_LINE), "Writer gagal seharusnya tidak menghasilkan isi"
+            assert any(r["code"] == "no_draft" for r in email["security_reasons"])
+            assert email["draft_version"] == 1
+            prep_calls = {n: st.usage.calls[n] for n in ("apify", "firecrawl")}
+
+            gagal["aktif"] = False
+            await st.orch.regenerate_draft(email["send_key"])
+            await wait_decided(st, c["campaign_id"])
+
+            ditulis = st.db.get("Emails", email["send_key"])
+            assert ditulis["body"].strip(), "tulis ulang harus menghasilkan isi email"
+            assert ditulis["draft_version"] == 2, "approval lama batal karena versi draft naik"
+            assert ditulis["approval_hash"] == ""
+            assert not any(r["code"] == "no_draft" for r in ditulis["security_reasons"])
+            assert {n: st.usage.calls[n] for n in ("apify", "firecrawl")} == prep_calls, \
+                "tulis ulang tidak boleh memanggil enrichment atau riset lagi"
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(integ.SimLLM, "structured", kadang_gagal)
+        asyncio.run(go())
+
+
+def test_tulis_ulang_ditolak_untuk_draft_yang_sudah_final(tmp_path):
+    csv_text, _ = sample_rows([NORMAL[0]])
+
+    async def go():
+        async with httpx.AsyncClient() as http:
+            st = build_state(settings(tmp_path), http)
+            await st.db.start(background=False)
+            c = new_campaign(st, 1)
+            st.orch.import_leads(c["campaign_id"], csv_text)
+            st.orch.run_campaign(c["campaign_id"])
+            await wait_decided(st, c["campaign_id"])
+            email = st.db.all("Emails")[0]
+            st.orch.reject(email["send_key"])
+            with pytest.raises(ValueError):
+                await st.orch.regenerate_draft(email["send_key"])
 
     asyncio.run(go())

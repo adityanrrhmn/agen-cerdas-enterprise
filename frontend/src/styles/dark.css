@@ -1,0 +1,60 @@
+/* Mode gelap: token yang sama dibalik terangnya. --teal-900 menjadi biru terang karena perannya "teks kuat";
+   isian tombol yang dulu berteks putih memakai teks gelap di atas biru terang. Kontras semua pasangan >= 4,5:1. */
+:root[data-theme="dark"] { color-scheme: dark; background: #10151e; }
+:root[data-theme="dark"] body { background: #10151e; }
+
+[data-theme="dark"] .app {
+  --ground: #10151e;
+  --surface: #161d29;
+  --ink: #e6eaf1;
+  --ink-2: #b9c2d0;
+  --ink-3: #939cab;
+  --line: #2a3342;
+  --line-2: #222a37;
+  --teal-950: #dbe6fb;
+  --teal-900: #a9c4f5;
+  --teal-800: #8fb2ef;
+  --teal-600: #5b93f5;
+  --teal-200: #2c4066;
+  --teal-100: #1d2b45;
+  --teal-50: #172236;
+  --indigo: #a197f0;
+  --amber-50: #2a2210;
+  --amber-200: #5c4a1a;
+  --amber-600: #f2c35a;
+  --pass: #6fd3b0;
+  --pass-bg: #13302a;
+  --block: #f08a78;
+  --block-bg: #3a1a16;
+  --info: #aea6f5;
+  --info-bg: #231f45;
+}
+
+[data-theme="dark"] .app .btn-primary,
+[data-theme="dark"] .app .fact-no.is-used,
+[data-theme="dark"] .app .chip[aria-selected="true"] { color: #0f1520; }
+[data-theme="dark"] .app .settings-gear .dot { border-color: var(--ground); }
+[data-theme="dark"] .app .mode-chip { background: var(--teal-100); color: #b9cdf2; }
+[data-theme="dark"] .app .notice-warn { background: var(--amber-50); color: #f2d48a; }
+[data-theme="dark"] .app .notice-error { color: #f5b5a8; }
+[data-theme="dark"] .app .link-danger:hover { color: var(--block); }
+[data-theme="dark"] .app input:not([type=checkbox]),
+[data-theme="dark"] .app select,
+[data-theme="dark"] .app textarea { background: var(--surface); }
+[data-theme="dark"] .app input::placeholder,
+[data-theme="dark"] .app textarea::placeholder { color: #8a93a3; }
+[data-theme="dark"] .app .form legend::before,
+[data-theme="dark"] .brief-guide li > span { color: #8d9bb5; }
+[data-theme="dark"] .app .draft { box-shadow: 0 3px 0 var(--line-2); }
+
+/* Ruang agen tetap ilustrasi terang; hanya teks di sekitarnya yang ikut tema. */
+[data-theme="dark"] .app .agent-office { background: var(--ground); color: var(--ink); }
+[data-theme="dark"] .app .office-eyebrow,
+[data-theme="dark"] .app .office-heading p:last-child,
+[data-theme="dark"] .app .office-detail h3 span,
+[data-theme="dark"] .app .office-detail p,
+[data-theme="dark"] .app .office-footnote { color: var(--ink-3); }
+[data-theme="dark"] .app .office-motion { background: var(--surface); border-color: var(--line); color: var(--ink-2); }
+[data-theme="dark"] .app .office-detail { border-top-color: var(--line); }
+[data-theme="dark"] .app .office-detail-icon { background: var(--teal-50); color: var(--teal-900); }
+[data-theme="dark"] .app .office-room { border-radius: 4px; }

@@ -681,6 +681,32 @@ class Orchestrator:
         await self._launch(task["task_id"])
         return {"lead_id": lead_id, "resumed": task["task_id"]}
 
+    async def regenerate_draft(self, send_key: str) -> dict[str, Any]:
+        """Tulis ulang draft satu lead tanpa mengulang enrichment dan riset.
+
+        Dipakai ketika Writer gagal (mis. galat integrasi) sehingga draft kosong. Checkpoint prep
+        dipertahankan, jadi tidak ada panggilan Apify/Firecrawl tambahan; hanya fase core yang diulang.
+        """
+        email = self.db.get("Emails", send_key)
+        if not email:
+            raise KeyError(f"Draft {send_key} tidak ditemukan")
+        if email["status"] in FINAL_EMAIL | {"SENDING", "NEEDS_IDENTITY"}:
+            raise ValueError("Draft ini tidak dapat ditulis ulang")
+        task = self.db.get("Tasks", f"T-{email['lead_id']}-{email['occurrence_id']}")
+        if not task:
+            raise ValueError("Task untuk draft ini tidak ditemukan")
+        if "research" not in task["checkpoint"].get("done", []):
+            raise ValueError("Riset lead ini belum selesai; tulis ulang hanya untuk draft yang gagal di tahap penulisan")
+        if task["status"] not in {"DONE", "FAILED"}:
+            raise ValueError("Task lead ini belum selesai; tunggu sampai keputusan keluar")
+        # generation+1 membuat sisa runner lama (bila ada) tidak lagi current, seperti pada resolve_identity
+        self._update_task(task["task_id"], status="QUEUED", generation=task["generation"] + 1, retry=0, error="")
+        self.lead_tasks.pop(task["task_id"], None)
+        self._set_lead(email["lead_id"], stage="writing", decision="", reasons=[])
+        self.audit("user", f"draft {send_key} ditulis ulang", task["task_id"])
+        await self._launch(task["task_id"], host="core")
+        return {"send_key": send_key, "task_id": task["task_id"], "generation": task["generation"] + 1}
+
     def _latest_task(self, lead_id: str) -> dict[str, Any] | None:
         tasks = self.db.all("Tasks", lead_id=lead_id)
         return max(tasks, key=lambda t: t["occurrence_id"]) if tasks else None

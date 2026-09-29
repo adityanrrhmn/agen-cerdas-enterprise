@@ -20,7 +20,7 @@ Mengubah daftar prospek di spreadsheet menjadi email personal yang dapat diaudit
 Berbeda dari Clay/Apollo: kontrol state, kontrak pesan antaragen, approval terikat versi draft, dan eksperimen mobilitas agen (checkpoint, lease, generation) terlihat dan dapat diperiksa, bukan tersembunyi di dalam platform.
 
 ## Operating Context
-Alur 3 langkah: Setup → Preview & Approval → Monitor. Pengguna hanya menangani pengecualian (perlu review, diblokir). Jadwal kirim memakai zona waktu Asia/Jakarta secara default. Rancangan acuan: `Laporan_Multi_Agent_Email_Writer_Enrichment_Kelompok_1.docx` (lihat `docs/peta-laporan.md`).
+Alur UI: Setup → Monitor → Preview & Approval (Preview & Finalisasi pada mode draf). Pengguna hanya menangani pengecualian (perlu review, diblokir). Jadwal kirim memakai zona waktu Asia/Jakarta secara default. Rancangan acuan: `Laporan_Multi_Agent_Email_Writer_Enrichment_Kelompok_1.docx` (lihat `docs/peta-laporan.md`).
 
 ## Capabilities and Constraints
 - Status keputusan Security: PASS, REVIEW, BLOCK. Status kirim termasuk SENT_UNKNOWN (hasil ambigu, tidak dikirim ulang otomatis).
@@ -41,3 +41,12 @@ Belum ada data nyata. Data lead fiktif (domain `.example`) disediakan untuk demo
 
 ## Accessibility & Inclusion
 Antarmuka berbahasa Indonesia. Status tidak boleh dibedakan hanya dengan warna.
+
+## Arah visual (koreksi pengguna, 2026-09-29)
+
+Pengguna menilai seluruh aplikasi terlalu monoton dan berbentuk kumpulan kotak, bukan hanya visualisasi robot.
+Hindari menjadikan setiap kelompok informasi sebagai kartu berbingkai. Utamakan hierarki tipografi, ruang kosong,
+dan pemisah tipis. Setup berupa lembar brief berurutan; Review berupa surat dengan catatan bukti di sampingnya;
+Koneksi berupa direktori layanan; Monitor mengutamakan aktivitas agen dan membuka rincian teknis sesuai kebutuhan.
+Gaya bersama: latar krem, aksen hijau, judul serif, kontrol sederhana. Di ponsel bukti berada setelah surat dan
+layanan tersusun vertikal. Implementasi bersama di `frontend/src/styles/studio.css`.

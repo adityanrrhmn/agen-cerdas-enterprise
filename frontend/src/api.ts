@@ -272,6 +272,8 @@ export const api = {
   editEmail: (key: string, subject: string, body: string) => request<Email>("PUT", `/emails/${enc(key)}`, { subject, body }),
   approve: (key: string, draft_version: number, acknowledge_review: boolean) =>
     request<Email>("POST", `/emails/${enc(key)}/approve`, { draft_version, acknowledge_review }),
+  regenerate: (key: string) => request<{ send_key: string; task_id: string; generation: number }>(
+    "POST", `/emails/${enc(key)}/regenerate`),
   reject: (key: string) => request("POST", `/emails/${enc(key)}/reject`),
   reconcile: (key: string, outcome: "sent" | "not_sent") => request("POST", `/emails/${enc(key)}/reconcile`, { outcome }),
   emlUrl: (key: string) => `/api/emails/${enc(key)}/eml`,

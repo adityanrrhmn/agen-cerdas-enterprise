@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { FileUp, Play, Sparkles, User, Users } from "lucide-react";
+import { FileUp, Play, Sparkles } from "lucide-react";
 import { api, type CampaignSummary, type SystemInfo } from "../api";
 import { usePoll } from "../hooks";
 import { Button, Field, Notice, fmtDate, useAction, useToast } from "../ui";
@@ -18,16 +18,12 @@ const INITIAL = {
   offer: "Solusi untuk merangkum laporan dan mengoordinasikan tindak lanjut antar-cabang",
   cta: "Apakah Bapak/Ibu berkenan mengikuti demo singkat selama 15 menit minggu depan?",
   personalization: "per_lead",
-  cadence: "once",
-  max_occurrences: 4,
-  count: 100,
   schedule: nextMonday9(),
   timezone: "Asia/Jakarta",
   budget: 2,
   sender_name: "Tim Penjualan",
   template_subject: "",
   template_body: "",
-  single_recipient: true,
   send_now: true,
 };
 
@@ -52,6 +48,14 @@ export default function Setup({ summary, system, onCreated, onChanged, onStarted
         {campaign ? <CampaignReadout summary={summary!} /> : <CampaignForm onCreated={onCreated} system={system} />}
       </section>
       <aside className="setup-side">
+        <div className="brief-guide">
+          <p className="page-eyebrow">DARI BRIEF KE EMAIL</p>
+          <ol>
+            <li className={!campaign ? "is-current" : ""}><span>01</span><div><strong>Berikan arah</strong><p>Tujuan, penawaran, dan gaya personalisasi.</p></div></li>
+            <li className={isDraft && !!campaign ? "is-current" : ""}><span>02</span><div><strong>Kenalkan penerimanya</strong><p>Tambahkan nama dan konteks yang relevan.</p></div></li>
+            <li className={!isDraft ? "is-current" : ""}><span>03</span><div><strong>Agen menyiapkan, Anda meninjau</strong><p>Setiap draf tetap menunggu keputusan Anda.</p></div></li>
+          </ol>
+        </div>
         <LeadsStep summary={summary} isDraft={isDraft} onChanged={onChanged} onStarted={onStarted} system={system} />
         <Readiness system={system} />
       </aside>
@@ -67,8 +71,8 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const immediate = draftMode || (f.single_recipient && f.send_now);  // mode draf tidak punya jadwal kirim
-    const payload = { ...f, max_occurrences: f.cadence === "once" || f.single_recipient ? null : f.max_occurrences,
+    const immediate = draftMode || f.send_now;  // mode draf tidak punya jadwal kirim
+    const payload = { ...f, single_recipient: true, cadence: "once", max_occurrences: null, count: 1,
       send_now: immediate, schedule: immediate ? "" : f.schedule };
     const created = await run("create", () => api.createCampaign(payload),
       "Campaign dibuat. Lanjut muat lead.");
@@ -78,23 +82,8 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
   return (
     <form onSubmit={submit} className="form">
       <fieldset>
-        <legend>Penerima</legend>
-        <div className="mode-choice" role="radiogroup" aria-label="Jumlah penerima">
-          <label className={`mode ${f.single_recipient ? "is-on" : ""}`}>
-            <input type="radio" name="mode" checked={f.single_recipient} onChange={() => set("single_recipient", true)} />
-            <User size={18} aria-hidden />
-            <span><strong>Satu orang</strong><small>{draftMode ? "Satu draf email untuk satu orang, dikunci sistem." : "Tepat 1 penerima, dikunci sistem. Cocok untuk kontak penting atau uji kirim."}</small></span>
-          </label>
-          <label className={`mode ${!f.single_recipient ? "is-on" : ""}`}>
-            <input type="radio" name="mode" checked={!f.single_recipient} onChange={() => set("single_recipient", false)} />
-            <Users size={18} aria-hidden />
-            <span><strong>Banyak lead</strong><small>{draftMode ? "Impor CSV atau tambah beberapa lead; satu draf per lead." : "Impor CSV atau tambah beberapa lead; dikirim bertahap."}</small></span>
-          </label>
-        </div>
-      </fieldset>
-
-      <fieldset>
         <legend>Tujuan &amp; penawaran</legend>
+        <p className="legend-note">Setiap campaign mengirim ke tepat 1 penerima — cocok untuk kontak penting atau uji kirim.</p>
         <div className="grid-2">
           <Field label="Nama campaign" span={2}><input required value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
           <Field label="Tujuan" span={2}><input required value={f.goal} onChange={(e) => set("goal", e.target.value)} /></Field>
@@ -104,8 +93,7 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
       </fieldset>
 
       <fieldset>
-        <legend>Personalisasi &amp; frekuensi</legend>
-        <p className="legend-note">Dua pengaturan terpisah: seberapa personal isi email, dan seberapa sering campaign berulang.</p>
+        <legend>Personalisasi</legend>
         <div className="grid-2">
           <Field label="Tingkat personalisasi">
             <select value={f.personalization} onChange={(e) => set("personalization", e.target.value)}>
@@ -114,20 +102,6 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
               <option value="template">Template tetap (tanpa LLM)</option>
             </select>
           </Field>
-          {!f.single_recipient && (
-            <Field label="Frekuensi">
-              <select value={f.cadence} onChange={(e) => set("cadence", e.target.value)}>
-                <option value="once">Sekali</option>
-                <option value="weekly">Mingguan</option>
-                <option value="monthly">Bulanan</option>
-              </select>
-            </Field>
-          )}
-          {!f.single_recipient && f.cadence !== "once" && (
-            <Field label="Berhenti setelah" hint="Setiap kejadian membuat draft baru dan wajib disetujui ulang.">
-              <input type="number" min={2} max={12} value={f.max_occurrences} onChange={(e) => set("max_occurrences", Number(e.target.value))} />
-            </Field>
-          )}
           {f.personalization === "template" && (
             <>
               <Field label="Subjek template" span={2} hint="Placeholder: {name}, {company}, {sender_name}, {cta}">
@@ -147,20 +121,16 @@ function CampaignForm({ onCreated, system }: { onCreated: (id: string) => void; 
           <Field label="Nama pengirim" hint={draftMode ? "Dipakai sebagai penutup email." : system?.google.email ? `Dikirim dari ${system.google.email}` : "Akun Gmail belum dihubungkan (tab Koneksi)"}>
             <input required value={f.sender_name} onChange={(e) => set("sender_name", e.target.value)} />
           </Field>
-          {f.single_recipient ? (draftMode ? null : (
+          {!draftMode && (
             <Field label="Waktu kirim">
               <label className="consent">
                 <input type="checkbox" checked={f.send_now} onChange={(e) => set("send_now", e.target.checked)} />
                 <span>Kirim segera setelah draft disetujui</span>
               </label>
             </Field>
-          )) : (
-            <Field label="Jumlah lead" hint="Lead berlebih di CSV diabaikan; tidak ada penggantian diam-diam.">
-              <input type="number" required min={1} max={1000} value={f.count} onChange={(e) => set("count", Number(e.target.value))} />
-            </Field>
           )}
-          {!draftMode && !(f.single_recipient && f.send_now) && (
-            <Field label="Mulai jendela kirim" hint={f.single_recipient ? "Email dikirim pada atau setelah waktu ini, setelah disetujui." : "Email dikirim bertahap mulai waktu ini."}>
+          {!draftMode && !f.send_now && (
+            <Field label="Mulai jendela kirim" hint="Email dikirim pada atau setelah waktu ini, setelah disetujui.">
               <input type="datetime-local" required value={f.schedule} onChange={(e) => set("schedule", e.target.value)} />
             </Field>
           )}

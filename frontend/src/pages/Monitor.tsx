@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { ArrowRightLeft, Power, Radio } from "lucide-react";
 import { api, type AgentEvent, type CampaignSummary, type RuntimeInfo } from "../api";
 import { useEvents, usePoll } from "../hooks";
+import AgentOffice from "../components/AgentOffice";
+import { officeStates } from "../components/office-state";
 import { Button, Empty, Notice, STAGE_LABEL, StatusBadge, fmtDate, fmtNum, fmtTime, fmtUsd, useAction } from "../ui";
 
 const FLOW: { label: string; stages: string[] }[] = [
@@ -14,12 +16,13 @@ const FLOW: { label: string; stages: string[] }[] = [
   { label: "Diputuskan", stages: ["decided", "blocked", "failed"] },
 ];
 
-export default function Monitor({ summary, draftMode }: { summary: CampaignSummary; draftMode: boolean }) {
+export default function Monitor({ summary, draftMode, unavailable = false }: { summary: CampaignSummary; draftMode: boolean; unavailable?: boolean }) {
   const id = summary.campaign.campaign_id;
   const runtimes = usePoll(() => api.runtimes(), 1500, []);
   const metrics = usePoll(() => api.metrics(), 3000, []);
   const queue = usePoll(() => api.queue(id), 3000, [id]);
   const { events, live } = useEvents();
+  const officeLeads = usePoll(() => api.leads(id), 1500, [id]);
 
   const stages = summary.stages;
   const flow = FLOW.map((f) => ({ ...f, n: f.stages.reduce((sum, s) => sum + (stages[s] ?? 0), 0) }));
@@ -27,6 +30,7 @@ export default function Monitor({ summary, draftMode }: { summary: CampaignSumma
 
   return (
     <div className="monitor">
+      <AgentOffice states={officeStates(summary, officeLeads.data, events, Date.now(), unavailable || !!officeLeads.error)} />
       <section className="panel flow" aria-label="Alur task per tahap">
         <header className="panel-head">
           <h2>Alur task · {summary.occurrence_id}</h2>
@@ -42,6 +46,8 @@ export default function Monitor({ summary, draftMode }: { summary: CampaignSumma
         </ol>
       </section>
 
+      <details className="monitor-technical">
+        <summary><span>Di balik layar <small>Runtime, pemakaian, dan jejak koordinasi</small></span><span className="technical-toggle" aria-hidden="true">+</span></summary>
       <div className="monitor-grid">
         <div className="col">
           {runtimes.error && <Notice tone="error">{runtimes.error}</Notice>}
@@ -119,6 +125,7 @@ export default function Monitor({ summary, draftMode }: { summary: CampaignSumma
           <MessageLog events={events} live={live} />
         </div>
       </div>
+      </details>
     </div>
   );
 }

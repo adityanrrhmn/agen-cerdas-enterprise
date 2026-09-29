@@ -1,0 +1,16 @@
+{
+  "shots": [
+    {
+      "width": 1440,
+      "full": true,
+      "name": "office-working",
+      "height": 1000,
+      "path": "/agent-office.html",
+      "actions": [
+        "document.querySelector('.btn-primary').click(); await new Promise(r => setTimeout(r, 3500)); document.querySelector('.station-enrichment').click();"
+      ]
+    }
+  ],
+  "base": "http://127.0.0.1:5176",
+  "out": ".impeccable/agent-office"
+}

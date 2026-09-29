@@ -1,0 +1,74 @@
+{
+  "base": "http://127.0.0.1:5177",
+  "shots": [
+    {
+      "width": 1440,
+      "storage": {
+        "campaign": "new"
+      },
+      "path": "/?tab=setup",
+      "full": true,
+      "height": 1000,
+      "name": "setup-desktop"
+    },
+    {
+      "width": 390,
+      "storage": {
+        "campaign": "new"
+      },
+      "path": "/?tab=setup",
+      "full": true,
+      "height": 844,
+      "name": "setup-mobile"
+    },
+    {
+      "width": 1440,
+      "path": "/?tab=review",
+      "full": true,
+      "height": 1000,
+      "actions": [
+        "document.querySelector('.seg-ready').click()"
+      ],
+      "name": "review-desktop"
+    },
+    {
+      "width": 390,
+      "path": "/?tab=review",
+      "full": true,
+      "height": 844,
+      "actions": [
+        "document.querySelector('.seg-ready').click()"
+      ],
+      "name": "review-mobile"
+    },
+    {
+      "name": "monitor-desktop",
+      "full": true,
+      "width": 1440,
+      "height": 1000,
+      "path": "/?tab=monitor"
+    },
+    {
+      "name": "monitor-mobile",
+      "full": true,
+      "width": 390,
+      "height": 844,
+      "path": "/?tab=monitor"
+    },
+    {
+      "name": "koneksi-desktop",
+      "full": true,
+      "width": 1440,
+      "height": 1000,
+      "path": "/?tab=koneksi"
+    },
+    {
+      "name": "koneksi-mobile",
+      "full": true,
+      "width": 390,
+      "height": 844,
+      "path": "/?tab=koneksi"
+    }
+  ],
+  "out": ".impeccable/studio-review"
+}

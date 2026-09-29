@@ -108,6 +108,9 @@ class OpenRouterClient:
             "model": self.s.openrouter_model,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
             "max_tokens": self.s.llm_max_tokens,
+            # Model reasoning (mis. Claude 5) memakai max_tokens untuk berpikir lebih dulu; tanpa ini
+            # anggaran habis sebelum JSON selesai ditulis dan keluaran terpotong.
+            "reasoning": {"enabled": False},
             "response_format": {"type": "json_schema",
                                 "json_schema": {"name": schema_name, "strict": True, "schema": schema}},
         }
@@ -126,7 +129,12 @@ class OpenRouterClient:
         body = await _with_retry(self.provider, self.usage, call)
         if body.get("error"):
             raise IntegrationError(self.provider, str(body["error"])[:240])
-        content = body["choices"][0]["message"].get("content") or ""
+        choice = body["choices"][0]
+        content = choice["message"].get("content") or ""
+        if choice.get("finish_reason") == "length":
+            raise IntegrationError(self.provider,
+                                   f"keluaran LLM terpotong pada batas {self.s.llm_max_tokens} token; "
+                                   f"naikkan LLM_MAX_TOKENS di .env")
         data = parse_json_content(content)
         usage = body.get("usage") or {}
         result = LLMResult(data, int(usage.get("prompt_tokens") or 0), int(usage.get("completion_tokens") or 0),
@@ -155,7 +163,7 @@ def parse_json_content(content: str) -> dict[str, Any]:
         start, end = text.find("{"), text.rfind("}")
         if start >= 0 and end > start:
             return json.loads(text[start:end + 1])
-        raise IntegrationError("openrouter", "keluaran LLM bukan JSON")
+        raise IntegrationError("openrouter", f"keluaran LLM bukan JSON: {text[:120]!r}")
 
 
 # ---------------------------------------------------------------- Apify (enrichment)

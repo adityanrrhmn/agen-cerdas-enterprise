@@ -102,6 +102,9 @@ Contoh data di laporan harus tetap fiktif (domain `.example`).
   gagal dan state orchestrator tersentuh dari thread lain. Dijaga oleh `tests/test_api_routes.py`.
 - Edge headless dengan `--virtual-time-budget` tidak pernah selesai pada halaman ber-SSE (Monitor). Pakai
   `tools/screenshot.mjs` (CDP, jeda waktu nyata).
+- Model reasoning lewat OpenRouter (Claude 5) menghitung token berpikir ke dalam `max_tokens`. Bila `LLM_MAX_TOKENS`
+  terlalu kecil, keluaran JSON terpotong dan Writer gagal tanpa draft. `structured()` kini mengirim
+  `reasoning: {"enabled": false}`; lihat [docs/insiden.md](docs/insiden.md).
 - Heredoc bash berisi kutip kompleks bisa gagal di Git Bash Windows; tulis skrip ke scratchpad lalu jalankan.
 
 ## 7. Pemeliharaan panduan

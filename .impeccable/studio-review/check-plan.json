@@ -1,0 +1,47 @@
+{
+  "base": "http://127.0.0.1:5177",
+  "out": ".impeccable/studio-review",
+  "shots": [
+    {
+      "path": "/?tab=koneksi",
+      "full": true,
+      "width": 390,
+      "height": 844,
+      "name": "koneksi-mobile-final"
+    },
+    {
+      "full": true,
+      "actions": [
+        "document.querySelector('.monitor-technical > summary').click()"
+      ],
+      "selector": ".monitor-technical",
+      "height": 1000,
+      "path": "/?tab=monitor",
+      "name": "technical-desktop",
+      "width": 1440
+    },
+    {
+      "full": true,
+      "actions": [
+        "document.querySelector('.monitor-technical > summary').click()"
+      ],
+      "selector": ".monitor-technical",
+      "height": 844,
+      "path": "/?tab=monitor",
+      "name": "technical-mobile",
+      "width": 390
+    },
+    {
+      "full": true,
+      "actions": [
+        "document.querySelector('.seg-ready').click()",
+        "[...document.querySelectorAll('.draft-tools button')].find(b => b.textContent.trim() === 'Edit').click()"
+      ],
+      "selector": ".review-reading",
+      "height": 844,
+      "path": "/?tab=review",
+      "name": "review-edit-mobile",
+      "width": 390
+    }
+  ]
+}

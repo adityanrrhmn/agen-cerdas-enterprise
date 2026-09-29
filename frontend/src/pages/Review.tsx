@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Ban, Check, ClipboardCopy, Copy, Download, ExternalLink, FileSpreadsheet, Pause, Pencil, Play, Search, ShieldAlert, Undo2, X } from "lucide-react";
+import { Ban, Check, ClipboardCopy, Copy, Download, ExternalLink, FileSpreadsheet, Pause, Pencil, Play, RefreshCw, ShieldAlert, Undo2, X } from "lucide-react";
 import { api, type CampaignSummary, type Email, type Evidence, type LeadDetail, type LeadRow } from "../api";
 import { usePoll } from "../hooks";
 import { Button, Empty, Notice, STAGE_LABEL, StatusBadge, fmtDate, fmtNum, fmtTime, fmtUsd, useAction, useToast } from "../ui";
@@ -25,18 +25,12 @@ export default function Review({ summary, onChanged, draftMode }: Props) {
   const id = summary.campaign.campaign_id;
   const leads = usePoll(() => api.leads(id), 2500, [id]);
   const [filter, setFilter] = useState<Filter>("all");
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
   const { busy, run } = useAction();
 
   const rows = leads.data ?? [];
   const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.key, rows.filter(f.match).length])), [rows]);
-  const visible = rows.filter(FILTERS.find((f) => f.key === filter)!.match)
-    .filter((l) => !query || `${l.name} ${l.company} ${l.email}`.toLowerCase().includes(query.toLowerCase()));
-
-  useEffect(() => {
-    if (!selected && visible.length) setSelected(visible[0].lead_id);
-  }, [visible, selected]);
+  const visible = rows.filter(FILTERS.find((f) => f.key === filter)!.match);
+  const current = visible[0] ?? null;
 
   const refreshAll = () => { leads.refresh(); onChanged(); };
   const paused = summary.campaign.status === "PAUSED";
@@ -81,36 +75,16 @@ export default function Review({ summary, onChanged, draftMode }: Props) {
       {paused && <Notice tone="warn" title="Campaign dijeda">Agen berhenti di checkpoint terdekat dan scheduler tidak mengirim email.</Notice>}
 
       <div className="review-body">
-        <section className="panel lead-list" aria-label="Daftar lead">
-          <div className="list-search">
-            <Search size={15} aria-hidden />
-            <input placeholder="Cari nama, perusahaan, email" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Cari lead" />
-          </div>
-          {leads.error && <Notice tone="error">{leads.error}</Notice>}
-          {!leads.data && !leads.error && <div className="skeleton-list">{Array.from({ length: 8 }, (_, i) => <div key={i} className="skeleton-row" />)}</div>}
-          {leads.data && visible.length === 0 && (
+        {leads.error && <Notice tone="error">{leads.error}</Notice>}
+        {!leads.data && !leads.error && <section className="panel detail"><div className="skeleton-detail" /></section>}
+        {leads.data && !current && (
+          <section className="panel detail">
             <Empty title={rows.length ? "Tidak ada lead di filter ini" : "Belum ada lead"}>
               {rows.length ? "Pilih filter lain." : "Muat lead dan jalankan agen dari langkah Setup."}
             </Empty>
-          )}
-          <ul className="lead-rows">
-            {visible.map((l) => (
-              <li key={l.lead_id}>
-                <button className={`lead-row ${selected === l.lead_id ? "is-selected" : ""}`} onClick={() => setSelected(l.lead_id)}>
-                  <span className="lead-name">{l.name}</span>
-                  <span className="lead-company">{l.company || l.description}</span>
-                  <span className="lead-status">
-                    <StatusBadge status={l.email_status} fallback={STAGE_LABEL[l.stage] ?? l.stage} />
-                    {l.host && !l.email_status && <span className="host-chip">runtime {l.host}</span>}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-        {selected ? <LeadPanel key={selected} leadId={selected} onChanged={refreshAll} draftMode={draftMode} /> : (
-          <section className="panel detail"><Empty title="Pilih lead">Detail draft, bukti, dan alasan keputusan muncul di sini.</Empty></section>
+          </section>
         )}
+        {current && <LeadPanel key={current.lead_id} leadId={current.lead_id} onChanged={refreshAll} draftMode={draftMode} />}
       </div>
     </div>
   );
@@ -146,15 +120,23 @@ function LeadPanel({ leadId, onChanged, draftMode }: { leadId: string; onChanged
         </div>
       </header>
 
+      <div className="review-reading">
+      <div className="review-letter">
       <Reasons detail={d} />
       {!d.lead.email && <EmailFill leadId={d.lead.lead_id} onChanged={refresh} optional={draftMode} />}
       {d.email?.status === "NEEDS_IDENTITY" && <IdentityReview detail={d} onChanged={refresh} />}
-      {d.email && d.email.status !== "NEEDS_IDENTITY" && d.email.body && <Draft email={d.email} facts={facts} order={order} onChanged={refresh} draftMode={draftMode} />}
+      {d.email && d.email.status !== "NEEDS_IDENTITY" && <Draft email={d.email} facts={facts} order={order} onChanged={refresh} draftMode={draftMode} />}
       {!d.email && <Empty title="Agen masih bekerja">Tahap sekarang: {STAGE_LABEL[d.lead.stage] ?? d.lead.stage}{d.task?.host ? ` di runtime ${d.task.host}` : ""}.</Empty>}
       {d.email?.status === "BLOCKED" && !d.email.body && <p className="muted small">Kontak diblokir sebelum draft ditulis; tidak ada biaya LLM.</p>}
 
-      <EvidenceList facts={facts} order={order} />
-      <Trail detail={d} />
+      </div>
+      <aside className="review-notes" aria-label="Bukti dan riwayat draf">
+        <p className="page-eyebrow">DI BALIK DRAF INI</p>
+        <EvidenceList facts={facts} order={order} />
+        {!facts.length && <p className="muted small">Belum ada bukti yang tersedia untuk lead ini.</p>}
+        <Trail detail={d} />
+      </aside>
+      </div>
     </section>
   );
 }
@@ -274,7 +256,7 @@ function Draft({ email, facts, order, onChanged, draftMode }: {
 
   useEffect(() => { if (!editing) { setSubject(email.subject); setBody(email.body); } }, [email.subject, email.body, editing]);
 
-  const canApprove = email.status === "AWAITING_APPROVAL" || (email.status === "NEEDS_REVIEW" && ack);
+  const canApprove = Boolean(email.body) && (email.status === "AWAITING_APPROVAL" || (email.status === "NEEDS_REVIEW" && ack));
   const editable = ["AWAITING_APPROVAL", "NEEDS_REVIEW", "APPROVED", "NEEDS_REAPPROVAL", "FINAL"].includes(email.status);
   const suppressible = Boolean(email.to_email) && !["SENT", "SENDING", "BLOCKED"].includes(email.status);
   const verb = draftMode ? "Finalkan" : "Setujui";
@@ -285,6 +267,14 @@ function Draft({ email, facts, order, onChanged, draftMode }: {
         <span className="draft-version">Draft v{email.draft_version}</span>
         {email.llm_model && <span className="muted small">{email.llm_model === "simulasi" ? "SIMULASI (bukan LLM)" : email.llm_model} · {fmtNum(email.tokens_in + email.tokens_out)} token · {fmtUsd(email.cost_usd)}</span>}
         <div className="draft-tools">
+          {editable && !editing && (
+            <Button size="sm" variant="ghost" icon={<RefreshCw size={14} />} busy={busy === "regen"}
+              onClick={async () => {
+                await run("regen", () => api.regenerate(email.send_key),
+                  "Agen menulis ulang draft; enrichment dan riset tidak diulang.");
+                onChanged();
+              }}>Tulis ulang</Button>
+          )}
           {editable && !editing && <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEditing(true)}>Edit</Button>}
         </div>
       </header>
@@ -305,8 +295,10 @@ function Draft({ email, facts, order, onChanged, draftMode }: {
             <Button variant="ghost" icon={<Undo2 size={14} />} onClick={() => setEditing(false)}>Batal</Button>
           </div>
         </>
-      ) : (
+      ) : email.body ? (
         <div className="mail-body">{highlight(email.body, facts, order)}</div>
+      ) : (
+        <p className="muted small">Draft belum ditulis. Gunakan "Tulis ulang" untuk mencoba lagi, atau "Edit" untuk menulis manual.</p>
       )}
       {!editing && ["AWAITING_APPROVAL", "NEEDS_REVIEW"].includes(email.status) && (
         <footer className="approve-bar">

@@ -37,7 +37,7 @@ class Settings:
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_app_name: str = "Outreach Control"
     openrouter_referer: str = "http://localhost:5173"
-    llm_max_tokens: int = 1200
+    llm_max_tokens: int = 2000
 
     apify_token: str = ""
     apify_base_url: str = "https://api.apify.com/v2"
@@ -141,7 +141,7 @@ def load_settings(env_file: Path | None = None) -> Settings:
         openrouter_base_url=_str("OPENROUTER_BASE_URL", Settings.openrouter_base_url).rstrip("/"),
         openrouter_app_name=_str("OPENROUTER_APP_NAME", Settings.openrouter_app_name),
         openrouter_referer=_str("OPENROUTER_REFERER", Settings.openrouter_referer),
-        llm_max_tokens=_int("LLM_MAX_TOKENS", 1200),
+        llm_max_tokens=_int("LLM_MAX_TOKENS", 2000),
         apify_token=_str("APIFY_TOKEN"),
         apify_actor=_str("APIFY_ENRICHMENT_ACTOR"),
         apify_input_template=template,

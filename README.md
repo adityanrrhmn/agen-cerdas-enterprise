@@ -72,7 +72,12 @@ Struktur folder:
 ```
 backend/        FastAPI, agen, tes (pytest), data fiktif
 frontend/       React + TypeScript + Vite
-docs/           Runbook aplikasi, peta laporan, catatan insiden, gambar/ (tangkapan layar)
+  public/         Logo, favicon, gambar robot agen
+  src/pages/      Halaman Setup, Monitor, Preview & Approval, Koneksi
+  src/components/ Ruang kerja agen (animasi robot)
+  src/styles/     base.css, studio.css (tampilan editorial), dark.css (mode gelap)
+  tests/          Tes status robot (lihat docs/agent-office.md)
+docs/           Runbook aplikasi, peta laporan, catatan insiden, gambar/ (tangkapan layar + logo master)
 presentasi/     Deck PowerPoint + generator (npm run build)
 tools/          Pemeriksa angka laporan, skrip screenshot
 .env.example    Templat konfigurasi (salin ke .env)

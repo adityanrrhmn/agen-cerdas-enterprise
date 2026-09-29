@@ -97,7 +97,36 @@ node tools/screenshot.mjs http://localhost:5174 .impeccable/review desktop-revie
 
 Hapus `backend/data/local-store.json` setelah selesai. Skrip screenshot melaporkan `OVERFLOW` bila ada scroll horizontal.
 
-## Masalah umum
+## Ruang kerja robot (2026-09-29)
+
+Panel robot ditambahkan di Monitor: PNG transparan + animasi CSS untuk lima peran, mengikuti lead campaign
+aktif dan event Security. Panduan aset, pemetaan status, serta demo tanpa biaya: [agent-office.md](agent-office.md).
+Demo visual di `/agent-office.html` pada server Vite; tidak memanggil backend. Backend preview aman tersedia
+melalui `tools/preview-agent-office.py` (port 8006, mode simulasi/draf, tanpa membaca `.env`).
+
+Verifikasi penambahan panel: **lulus** TypeScript dan build Vite; **lulus** 4 tes status visual;
+**lulus** 45 tes backend; **lulus** pemeriksaan screenshot demo dan Monitor dengan backend simulasi
+pada lebar 1440 dan 390, tanpa overflow horizontal. Bukti: `.impeccable/agent-office/`.
+Tes koneksi layanan live **dilewati**, karena perubahan hanya presentasi dan sudah diperiksa memakai adapter simulasi.
+Laporan `.docx` tidak diubah; pemeriksaan laporan **dilewati**.
+
+## Masalah umum (operasional)
+
+### Desain halaman terbuka (2026-09-29)
+
+Koreksi pengguna: tampilan seluruh aplikasi terlalu berupa kotak. `frontend/src/styles/studio.css` memberi gaya bersama
+untuk shell, Setup, Review, Monitor, dan Koneksi; diimpor dari `main.tsx` setelah `styles/base.css`, lalu
+`styles/dark.css` (mode gelap lewat `data-theme` di `<html>`, dipasang sebelum render di `index.html`, tersimpan di
+`localStorage.theme`). Warna mengikuti logo (master: `docs/gambar/logo.png`). Komponen robot/demo mandiri tetap
+memakai stylesheet sendiri. Setup mendapat panduan tahap; Review memisahkan surat dan bukti; rincian runtime,
+pemakaian, dan log Monitor tersedia lewat **Di balik layar**. Semua kontrol tetap tersedia.
+
+Verifikasi: **lulus** TypeScript, build produksi, 45 tes backend, dan 4 tes status robot.
+Screenshot empat halaman pada 1440/390: **lulus**, tanpa overflow horizontal halaman
+(`.impeccable/studio-review/`). Pemeriksaan memakai backend simulasi khusus port 8006 dan frontend 5177.
+Tes layanan live **dilewati** (perubahan UI); pemeriksaan laporan **dilewati** (.docx tidak diubah).
+
+### Operasional layanan
 
 | Gejala | Penyebab / tindakan |
 |---|---|

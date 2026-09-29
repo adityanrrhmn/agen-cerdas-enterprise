@@ -383,6 +383,11 @@ async def approve(send_key: str, body: ApproveIn, request: Request):
     return guard(S(request).orch.approve, send_key, body.draft_version, body.acknowledge_review)
 
 
+@app.post("/api/emails/{send_key}/regenerate")
+async def regenerate(send_key: str, request: Request):
+    return await aguard(S(request).orch.regenerate_draft(send_key))
+
+
 @app.post("/api/emails/{send_key}/reject")
 async def reject(send_key: str, request: Request):
     return guard(S(request).orch.reject, send_key)
